@@ -151,7 +151,7 @@ export function GoalDetail() {
             Sub-Goals ({childGoals.length})
           </TabsTrigger>
           <TabsTrigger value="projects">
-            Projects ({linkedProjects.length})
+            Companies ({linkedProjects.length})
           </TabsTrigger>
         </TabsList>
 
@@ -175,7 +175,7 @@ export function GoalDetail() {
 
         <TabsContent value="projects" className="mt-4">
           {linkedProjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No linked projects.</p>
+            <p className="text-sm text-muted-foreground">No linked companies.</p>
           ) : (
             <div className="border border-border">
               {linkedProjects.map((project) => (

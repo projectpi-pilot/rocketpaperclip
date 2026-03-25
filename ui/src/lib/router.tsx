@@ -24,12 +24,20 @@ function resolveTo(to: To, companyPrefix: string | null): To {
 }
 
 function useActiveCompanyPrefix(): string | null {
-  const { selectedCompany } = useCompany();
+  const { companies, selectedCompany } = useCompany();
   const params = RouterDom.useParams<{ companyPrefix?: string }>();
   const location = RouterDom.useLocation();
 
   if (params.companyPrefix) {
-    return normalizeCompanyPrefix(params.companyPrefix);
+    const requestedPrefix = normalizeCompanyPrefix(params.companyPrefix);
+    const matchedCompany = companies.find(
+      (company) => normalizeCompanyPrefix(company.issuePrefix) === requestedPrefix,
+    );
+    if (matchedCompany) {
+      return requestedPrefix;
+    }
+    const fallbackCompany = selectedCompany ?? companies[0] ?? null;
+    return fallbackCompany ? normalizeCompanyPrefix(fallbackCompany.issuePrefix) : requestedPrefix;
   }
 
   const pathPrefix = extractCompanyPrefixFromPath(location.pathname);

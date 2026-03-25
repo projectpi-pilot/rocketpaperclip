@@ -46,6 +46,7 @@ import {
   Gem,
   ListTodo,
   Rocket,
+  Activity,
   ArrowLeft,
   ArrowRight,
   Terminal,
@@ -54,6 +55,7 @@ import {
   Check,
   Loader2,
   ChevronDown,
+  TrendingUp,
   X
 } from "lucide-react";
 
@@ -68,11 +70,507 @@ type AdapterType =
   | "http"
   | "openclaw_gateway";
 
-const DEFAULT_TASK_DESCRIPTION = `You are the CEO. You set the direction for the company.
+type StudioOpportunitySource =
+  | "market_signal"
+  | "raw_idea"
+  | "validated_outcome";
+type StudioFeedFilter = StudioOpportunitySource | "all";
+type StudioIndustry =
+  | "all"
+  | "care"
+  | "creator"
+  | "local_smb"
+  | "commerce"
+  | "ops"
+  | "fintech";
 
-- hire a founding engineer
-- write a hiring plan
-- break the roadmap into concrete tasks and start delegating work`;
+type StudioOpportunityMetric = {
+  label: string;
+  value: string;
+};
+
+type StudioSwarmUpdate = {
+  agent: string;
+  action: string;
+  eta: string;
+  status: "live" | "queued" | "ready";
+};
+
+type StudioOpportunity = {
+  id: string;
+  source: StudioOpportunitySource;
+  industry: Exclude<StudioIndustry, "all">;
+  title: string;
+  tagline: string;
+  summary: string;
+  signal: string;
+  companyName: string;
+  goal: string;
+  budgetUsd: string;
+  initialTaskTitle: string;
+  recommendedTemplateId: string;
+  proofPoints: string[];
+  metrics: StudioOpportunityMetric[];
+  swarmUpdates: StudioSwarmUpdate[];
+};
+
+type StarterTeamTemplate = {
+  id: string;
+  title: string;
+  summary: string;
+  defaultAgentName: string;
+  founderBrief: string;
+};
+
+const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
+  {
+    id: "elder-memory-mobile",
+    source: "validated_outcome",
+    industry: "care",
+    title: "Elder Memory Mobile",
+    tagline: "Calm memory support for elders and caregivers.",
+    summary:
+      "A dementia-friendly memory support app for older adults and caregivers.",
+    signal: "Caregiving demand, aging population, family coordination pain",
+    companyName: "Elder Memory Mobile",
+    goal:
+      "Ship a calm, highly accessible elder memory app, launch it cleanly, and get to first revenue fast.",
+    budgetUsd: "750",
+    initialTaskTitle:
+      "Activate Elder Memory Mobile and ship the first public MVP",
+    recommendedTemplateId: "product-design-pod",
+    proofPoints: [
+      "Accessibility and trust are core product moats.",
+      "Caregiver coordination is urgent and repeatable.",
+      "A narrow first workflow can monetize fast."
+    ],
+    metrics: [
+      { label: "Industry", value: "Care + health" },
+      { label: "First revenue", value: "Caregiver subscription" },
+      { label: "Launch path", value: "Mobile preview" }
+    ],
+    swarmUpdates: [
+      {
+        agent: "trend-scanner",
+        action: "matching caregiver pain clusters with aging-demand proofs",
+        eta: "live now",
+        status: "live"
+      },
+      {
+        agent: "ux-architect",
+        action: "compressing reminders into a low-friction daily home surface",
+        eta: "2 min",
+        status: "queued"
+      },
+      {
+        agent: "mobile-app-builder",
+        action: "prepping the first Expo-ready memory support slice",
+        eta: "4 min",
+        status: "queued"
+      },
+      {
+        agent: "growth-operator",
+        action: "drafting the caregiver positioning and first pricing angle",
+        eta: "ready",
+        status: "ready"
+      }
+    ]
+  },
+  {
+    id: "trend-to-product-engine",
+    source: "market_signal",
+    industry: "creator",
+    title: "Trend-to-Product Engine",
+    tagline: "Ship products directly from trend velocity.",
+    summary:
+      "Turn TikTok, creator, and market trend signals into fast-shipped micro SaaS products.",
+    signal: "Short-form content velocity, trend arbitrage, creator demand",
+    companyName: "Trend Product Engine",
+    goal:
+      "Continuously turn live signals into polished product experiments with clear launch and monetization loops.",
+    budgetUsd: "1200",
+    initialTaskTitle: "Launch the first signal-driven product experiment",
+    recommendedTemplateId: "growth-revenue-pod",
+    proofPoints: [
+      "Trend timing is a distribution advantage.",
+      "Short product cycles create reusable launch systems.",
+      "Virality and monetization need to start together."
+    ],
+    metrics: [
+      { label: "Industry", value: "Creator + media" },
+      { label: "First revenue", value: "Paid launch templates" },
+      { label: "Launch path", value: "Web dashboard" }
+    ],
+    swarmUpdates: [
+      {
+        agent: "signal-hunter",
+        action: "ranking creator trends by monetizable demand",
+        eta: "live now",
+        status: "live"
+      },
+      {
+        agent: "rapid-prototyper",
+        action: "assembling the first trend-ingestion console",
+        eta: "3 min",
+        status: "queued"
+      },
+      {
+        agent: "social-media-strategist",
+        action: "drafting distribution hooks around trend proof",
+        eta: "5 min",
+        status: "queued"
+      },
+      {
+        agent: "pricing-operator",
+        action: "lining up the first template bundle offer",
+        eta: "ready",
+        status: "ready"
+      }
+    ]
+  },
+  {
+    id: "local-lead-studio",
+    source: "raw_idea",
+    industry: "local_smb",
+    title: "Local Lead Studio",
+    tagline: "Fix missed inbound leads for neglected local SMBs.",
+    summary:
+      "An agentic lead-gen and follow-up system for local businesses with weak digital ops.",
+    signal: "Local SMB follow-up gaps, missed inbound leads, low automation adoption",
+    companyName: "Local Lead Studio",
+    goal:
+      "Build a profitable local-business lead engine with strong positioning, conversion paths, and repeatable outbound growth.",
+    budgetUsd: "950",
+    initialTaskTitle: "Activate the first local lead generation MVP",
+    recommendedTemplateId: "lean-launch-pod",
+    proofPoints: [
+      "Lead leakage is easy to explain and easy to value.",
+      "A single vertical can validate the full system quickly.",
+      "Revenue can start with operator-assisted setups."
+    ],
+    metrics: [
+      { label: "Industry", value: "Local SMB" },
+      { label: "First revenue", value: "Done-for-you pilot" },
+      { label: "Launch path", value: "Operator dashboard" }
+    ],
+    swarmUpdates: [
+      {
+        agent: "market-mapper",
+        action: "clustering the easiest local verticals to attack first",
+        eta: "live now",
+        status: "live"
+      },
+      {
+        agent: "backend-builder",
+        action: "wiring lead capture and response routing for the first niche",
+        eta: "4 min",
+        status: "queued"
+      },
+      {
+        agent: "sales-operator",
+        action: "preparing the outreach script for first pilots",
+        eta: "6 min",
+        status: "queued"
+      },
+      {
+        agent: "revops-agent",
+        action: "shaping onboarding plus monthly retainer packaging",
+        eta: "ready",
+        status: "ready"
+      }
+    ]
+  },
+  {
+    id: "storefront-concierge",
+    source: "validated_outcome",
+    industry: "commerce",
+    title: "Storefront Concierge",
+    tagline: "Turn abandoned browse traffic into guided checkout.",
+    summary:
+      "A high-conversion product advisor for small commerce brands with weak merchandising and no onsite guidance.",
+    signal: "Merch fatigue, low conversion, demand for guided shopping",
+    companyName: "Storefront Concierge",
+    goal:
+      "Ship a high-conversion guided shopping assistant, prove uplift with live previews, and monetize through merchant subscriptions.",
+    budgetUsd: "1100",
+    initialTaskTitle: "Activate Storefront Concierge and ship the first shopper guidance MVP",
+    recommendedTemplateId: "product-design-pod",
+    proofPoints: [
+      "Merchants can feel conversion pain immediately.",
+      "Strong UX and product taste matter at the point of sale.",
+      "A clear AOV or conversion uplift makes pricing simple."
+    ],
+    metrics: [
+      { label: "Industry", value: "Commerce" },
+      { label: "First revenue", value: "Merchant SaaS" },
+      { label: "Launch path", value: "Embedded storefront widget" }
+    ],
+    swarmUpdates: [
+      {
+        agent: "commerce-scout",
+        action: "ranking categories where guided shopping wins fastest",
+        eta: "live now",
+        status: "live"
+      },
+      {
+        agent: "ui-designer",
+        action: "tightening the assistive product card system for mobile",
+        eta: "2 min",
+        status: "queued"
+      },
+      {
+        agent: "frontend-developer",
+        action: "building a lightweight storefront preview shell",
+        eta: "5 min",
+        status: "queued"
+      },
+      {
+        agent: "growth-hacker",
+        action: "writing the uplift-first merchant landing angle",
+        eta: "ready",
+        status: "ready"
+      }
+    ]
+  },
+  {
+    id: "compliance-hotline-copilot",
+    source: "market_signal",
+    industry: "ops",
+    title: "Compliance Hotline Copilot",
+    tagline: "Resolve repetitive compliance ops before they become tickets.",
+    summary:
+      "A guided compliance assistant for teams overwhelmed by policy questions, vendor forms, and repeat internal tickets.",
+    signal: "Security reviews, compliance fatigue, repeat ops interruptions",
+    companyName: "Compliance Hotline Copilot",
+    goal:
+      "Launch a narrow compliance copilot that clears repetitive requests, prove internal time savings, and convert it into a recurring B2B ops product.",
+    budgetUsd: "1400",
+    initialTaskTitle: "Launch the first compliance copilot workflow",
+    recommendedTemplateId: "lean-launch-pod",
+    proofPoints: [
+      "Ops pain is measurable in hours and interruptions.",
+      "The first wedge can be a single recurring workflow.",
+      "Enterprise-facing UX still needs clarity and trust."
+    ],
+    metrics: [
+      { label: "Industry", value: "Ops + compliance" },
+      { label: "First revenue", value: "Internal team pilot" },
+      { label: "Launch path", value: "Web command center" }
+    ],
+    swarmUpdates: [
+      {
+        agent: "ops-researcher",
+        action: "mapping the first high-frequency compliance request cluster",
+        eta: "live now",
+        status: "live"
+      },
+      {
+        agent: "agents-orchestrator",
+        action: "splitting the workflow into triage, evidence, and response lanes",
+        eta: "2 min",
+        status: "queued"
+      },
+      {
+        agent: "senior-developer",
+        action: "building the first request triage workspace",
+        eta: "5 min",
+        status: "queued"
+      },
+      {
+        agent: "analytics-operator",
+        action: "instrumenting time-saved reporting for the first buyers",
+        eta: "ready",
+        status: "ready"
+      }
+    ]
+  },
+  {
+    id: "invoice-cashflow-companion",
+    source: "raw_idea",
+    industry: "fintech",
+    title: "Invoice Cashflow Companion",
+    tagline: "Give small teams a calmer weekly cashflow control room.",
+    summary:
+      "A lightweight operating console for invoices, expected cash, and short-horizon runway decisions for tiny teams.",
+    signal: "Founder cash anxiety, late invoices, no lightweight finance view",
+    companyName: "Invoice Cashflow Companion",
+    goal:
+      "Build a calm finance cockpit for small teams, launch with a weekly cashflow ritual, and get to the first paid operators quickly.",
+    budgetUsd: "1000",
+    initialTaskTitle: "Activate the first cashflow companion MVP",
+    recommendedTemplateId: "growth-revenue-pod",
+    proofPoints: [
+      "Founders understand the pain instantly.",
+      "The first product slice is narrow but sticky.",
+      "Monetization can happen before deep integrations."
+    ],
+    metrics: [
+      { label: "Industry", value: "Fintech ops" },
+      { label: "First revenue", value: "Operator subscription" },
+      { label: "Launch path", value: "Web finance cockpit" }
+    ],
+    swarmUpdates: [
+      {
+        agent: "finance-tracker",
+        action: "shaping the minimum runway and invoice views",
+        eta: "live now",
+        status: "live"
+      },
+      {
+        agent: "rapid-prototyper",
+        action: "prepping the weekly cash ritual surface",
+        eta: "3 min",
+        status: "queued"
+      },
+      {
+        agent: "content-creator",
+        action: "framing the founder anxiety narrative for launch",
+        eta: "5 min",
+        status: "queued"
+      },
+      {
+        agent: "paid-social-strategist",
+        action: "lining up the first CAC experiment for finance operators",
+        eta: "ready",
+        status: "ready"
+      }
+    ]
+  },
+];
+
+const STARTER_TEAM_TEMPLATES: StarterTeamTemplate[] = [
+  {
+    id: "lean-launch-pod",
+    title: "Lean launch pod",
+    summary: "Builder-heavy pod for shipping a credible MVP quickly, then layering launch and revenue.",
+    defaultAgentName: "Studio CEO",
+    founderBrief:
+      "Recruit a lean founding pod around product delivery first: one engineering lead, one design-minded product operator, and one launch/growth operator.",
+  },
+  {
+    id: "product-design-pod",
+    title: "Product and design pod",
+    summary: "Use when the product surface matters as much as the implementation.",
+    defaultAgentName: "Product Lead",
+    founderBrief:
+      "Recruit a pod with strong product taste: engineering, UX/UI, and a PM-quality operator who protects scope and clarity.",
+  },
+  {
+    id: "growth-revenue-pod",
+    title: "Growth and revenue pod",
+    summary: "Use when distribution, virality, pricing, and first sales matter immediately.",
+    defaultAgentName: "Growth Lead",
+    founderBrief:
+      "Recruit a founding pod that treats launch, virality, pricing, and monetization as first-class work from day one.",
+  },
+  {
+    id: "ops-systems-pod",
+    title: "Ops and systems pod",
+    summary: "Use when the company needs strong automations, service ops, and execution systems from the first week.",
+    defaultAgentName: "Operations Lead",
+    founderBrief:
+      "Recruit a systems-heavy pod that keeps delivery organized, automates repetitive work, and builds the operating backbone for support, analytics, and scale.",
+  },
+];
+
+const STUDIO_PRIVILEGES = [
+  "Operator access to the MSX resource layer, signals, and ideas.",
+  "Distribution and launch leverage across studio surfaces.",
+  "Funding and momentum pathways once a company shows traction.",
+];
+
+const STUDIO_INDUSTRY_OPTIONS: Array<{
+  id: StudioIndustry;
+  label: string;
+}> = [
+  { id: "all", label: "All industries" },
+  { id: "care", label: "Care" },
+  { id: "creator", label: "Creator" },
+  { id: "local_smb", label: "Local SMB" },
+  { id: "commerce", label: "Commerce" },
+  { id: "ops", label: "Ops" },
+  { id: "fintech", label: "Fintech" },
+];
+
+const STUDIO_FEED_FILTERS: Array<{
+  id: StudioFeedFilter;
+  label: string;
+}> = [
+  { id: "all", label: "All lanes" },
+  { id: "validated_outcome", label: "Validated outcomes" },
+  { id: "raw_idea", label: "Raw ideas" },
+  { id: "market_signal", label: "Market signals" },
+];
+
+const DEFAULT_STUDIO_OPPORTUNITY = STUDIO_OPPORTUNITIES[0];
+const DEFAULT_STARTER_TEAM_TEMPLATE =
+  STARTER_TEAM_TEMPLATES.find(
+    (entry) => entry.id === DEFAULT_STUDIO_OPPORTUNITY.recommendedTemplateId
+  ) ?? STARTER_TEAM_TEMPLATES[0];
+const STARTER_POD_MONTHLY_PRICE_USD = 58;
+const STARTER_POD_ALL_ACCESS_PRICE_USD = 148;
+
+function sourceLabel(source: StudioOpportunitySource) {
+  if (source === "market_signal") return "Market signal";
+  if (source === "raw_idea") return "Raw idea";
+  return "Validated outcome";
+}
+
+function industryLabel(industry: Exclude<StudioIndustry, "all">) {
+  return (
+    STUDIO_INDUSTRY_OPTIONS.find((entry) => entry.id === industry)?.label ??
+    "Studio"
+  );
+}
+
+function parseUsdToCents(value: string) {
+  const normalized = value.replace(/[^0-9.]/g, "").trim();
+  if (!normalized) return 0;
+  const amount = Number.parseFloat(normalized);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return Math.round(amount * 100);
+}
+
+function calculateStarterPodMonthlyPriceUsd(selectedCount: number) {
+  if (selectedCount >= STARTER_TEAM_TEMPLATES.length) {
+    return STARTER_POD_ALL_ACCESS_PRICE_USD;
+  }
+  return selectedCount * STARTER_POD_MONTHLY_PRICE_USD;
+}
+
+function buildActivationTaskDescription(input: {
+  opportunity: StudioOpportunity;
+  templates: StarterTeamTemplate[];
+  companyName: string;
+  goal: string;
+  budgetUsd: string;
+}) {
+  const selectedTemplateLines = input.templates.map(
+    (template) => `- ${template.title}: ${template.founderBrief}`
+  );
+  return [
+    `You are activating ${input.companyName} inside the MSX startup studio.`,
+    "",
+    `Studio source: ${sourceLabel(input.opportunity.source)}.`,
+    `Opportunity: ${input.opportunity.title}.`,
+    `Signal cluster: ${input.opportunity.signal}.`,
+    `Target outcome: ${input.goal}.`,
+    input.budgetUsd.trim() ? `Activation budget: $${input.budgetUsd.trim()} monthly.` : null,
+    "",
+    "Active starter pods:",
+    ...selectedTemplateLines,
+    "",
+    "Execution rules:",
+    "- Ship the thinnest working MVP fast, then keep going through launch, virality, and first revenue.",
+    "- Use the installed /superdesign skill and local Superdesign CLI by default for app and product design work.",
+    "- Run `superdesign init`, spin up a preview immediately, and use `/superdesign help me design the shipped UI` to push for a polished interface instead of a generic placeholder UI.",
+    "- Organize the next project lanes after the core build: launch, virality, and monetization.",
+    "",
+    "Return a concrete activation plan, create the first delivery tasks, and start delegating.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 export function OnboardingWizard() {
   const { onboardingOpen, onboardingOptions, closeOnboarding } = useDialog();
@@ -105,13 +603,33 @@ export function OnboardingWizard() {
   const [error, setError] = useState<string | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const studioDeckTouchStartXRef = useRef<number | null>(null);
 
   // Step 1
-  const [companyName, setCompanyName] = useState("");
-  const [companyGoal, setCompanyGoal] = useState("");
+  const [selectedIndustry, setSelectedIndustry] =
+    useState<StudioIndustry>("all");
+  const [selectedFeedFilter, setSelectedFeedFilter] =
+    useState<StudioFeedFilter>("all");
+  const [swarmFrame, setSwarmFrame] = useState(0);
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState(
+    DEFAULT_STUDIO_OPPORTUNITY.id
+  );
+  const [selectedStarterTeamTemplateIds, setSelectedStarterTeamTemplateIds] =
+    useState([DEFAULT_STARTER_TEAM_TEMPLATE.id]);
+  const [companyName, setCompanyName] = useState(
+    DEFAULT_STUDIO_OPPORTUNITY.companyName
+  );
+  const [companyGoal, setCompanyGoal] = useState(
+    DEFAULT_STUDIO_OPPORTUNITY.goal
+  );
+  const [activationBudgetUsd, setActivationBudgetUsd] = useState(
+    String(calculateStarterPodMonthlyPriceUsd(1))
+  );
 
   // Step 2
-  const [agentName, setAgentName] = useState("CEO");
+  const [agentName, setAgentName] = useState(
+    DEFAULT_STARTER_TEAM_TEMPLATE.defaultAgentName
+  );
   const [adapterType, setAdapterType] = useState<AdapterType>("claude_local");
   const [model, setModel] = useState("");
   const [command, setCommand] = useState("");
@@ -128,11 +646,18 @@ export function OnboardingWizard() {
 
   // Step 3
   const [taskTitle, setTaskTitle] = useState(
-    "Hire your first engineer and create a hiring plan"
+    DEFAULT_STUDIO_OPPORTUNITY.initialTaskTitle
   );
   const [taskDescription, setTaskDescription] = useState(
-    DEFAULT_TASK_DESCRIPTION
+    buildActivationTaskDescription({
+      opportunity: DEFAULT_STUDIO_OPPORTUNITY,
+      templates: [DEFAULT_STARTER_TEAM_TEMPLATE],
+      companyName: DEFAULT_STUDIO_OPPORTUNITY.companyName,
+      goal: DEFAULT_STUDIO_OPPORTUNITY.goal,
+      budgetUsd: String(calculateStarterPodMonthlyPriceUsd(1)),
+    })
   );
+  const [taskDescriptionTouched, setTaskDescriptionTouched] = useState(false);
 
   // Auto-grow textarea for task description
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -157,6 +682,190 @@ export function OnboardingWizard() {
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [createdIssueRef, setCreatedIssueRef] = useState<string | null>(null);
 
+  const selectedOpportunity = useMemo(
+    () =>
+      STUDIO_OPPORTUNITIES.find((entry) => entry.id === selectedOpportunityId) ??
+      DEFAULT_STUDIO_OPPORTUNITY,
+    [selectedOpportunityId]
+  );
+  const filteredStudioOpportunities = useMemo(() => {
+    const next = STUDIO_OPPORTUNITIES.filter((entry) => {
+      if (selectedIndustry !== "all" && entry.industry !== selectedIndustry) {
+        return false;
+      }
+      if (selectedFeedFilter !== "all" && entry.source !== selectedFeedFilter) {
+        return false;
+      }
+      return true;
+    });
+
+    return next.length > 0 ? next : STUDIO_OPPORTUNITIES;
+  }, [selectedFeedFilter, selectedIndustry]);
+  const selectedStarterPods = useMemo(() => {
+    const next = selectedStarterTeamTemplateIds
+      .map((id) => STARTER_TEAM_TEMPLATES.find((entry) => entry.id === id))
+      .filter(
+        (
+          template
+        ): template is StarterTeamTemplate => Boolean(template)
+      );
+
+    return next.length > 0 ? next : [DEFAULT_STARTER_TEAM_TEMPLATE];
+  }, [selectedStarterTeamTemplateIds]);
+  const selectedStarterPodMonthlyUsd = useMemo(
+    () => calculateStarterPodMonthlyPriceUsd(selectedStarterPods.length),
+    [selectedStarterPods.length]
+  );
+  const selectedStarterPodTitles = useMemo(
+    () => selectedStarterPods.map((template) => template.title).join(", "),
+    [selectedStarterPods]
+  );
+  const allStarterPodsSelected =
+    selectedStarterPods.length >= STARTER_TEAM_TEMPLATES.length;
+  const selectedStarterPodCountLabel = `${selectedStarterPods.length} pod${
+    selectedStarterPods.length === 1 ? "" : "s"
+  } active`;
+  const selectedStarterPodPriceLabel = allStarterPodsSelected
+    ? `$${STARTER_POD_ALL_ACCESS_PRICE_USD} / month`
+    : `$${selectedStarterPodMonthlyUsd} / month`;
+  const selectedOpportunityIndex = useMemo(
+    () =>
+      Math.max(
+        0,
+        filteredStudioOpportunities.findIndex(
+          (entry) => entry.id === selectedOpportunity.id
+        )
+      ),
+    [filteredStudioOpportunities, selectedOpportunity.id]
+  );
+  const queuedOpportunityCards = useMemo(() => {
+    if (filteredStudioOpportunities.length <= 1) return [];
+    return Array.from({
+      length: Math.min(3, filteredStudioOpportunities.length - 1),
+    }).map((_, index) => {
+      return filteredStudioOpportunities[
+        (selectedOpportunityIndex + index + 1) % filteredStudioOpportunities.length
+      ]!;
+    });
+  }, [filteredStudioOpportunities, selectedOpportunityIndex]);
+  const visibleSwarmUpdates = useMemo(() => {
+    const updates = selectedOpportunity.swarmUpdates;
+    if (updates.length === 0) return [];
+    return Array.from({ length: Math.min(4, updates.length) }).map((_, index) => {
+      return updates[(swarmFrame + index) % updates.length]!;
+    });
+  }, [selectedOpportunity.swarmUpdates, swarmFrame]);
+  const applyStudioConfiguration = useCallback(
+    (opportunityId: string, templateIds?: string[]) => {
+      const opportunity =
+        STUDIO_OPPORTUNITIES.find((entry) => entry.id === opportunityId) ??
+        DEFAULT_STUDIO_OPPORTUNITY;
+      const nextTemplateIds =
+        templateIds ?? [opportunity.recommendedTemplateId];
+      const templates = nextTemplateIds
+        .map((id) => STARTER_TEAM_TEMPLATES.find((entry) => entry.id === id))
+        .filter(
+          (
+            template
+          ): template is StarterTeamTemplate => Boolean(template)
+        );
+      const activeTemplates =
+        templates.length > 0 ? templates : [DEFAULT_STARTER_TEAM_TEMPLATE];
+      const primaryTemplate = activeTemplates[0] ?? DEFAULT_STARTER_TEAM_TEMPLATE;
+
+      setSelectedOpportunityId(opportunity.id);
+      setSelectedStarterTeamTemplateIds(activeTemplates.map((template) => template.id));
+      setCompanyName(opportunity.companyName);
+      setCompanyGoal(opportunity.goal);
+      setAgentName(primaryTemplate.defaultAgentName);
+      setTaskTitle(opportunity.initialTaskTitle);
+      setTaskDescriptionTouched(false);
+      setTaskDescription(
+        buildActivationTaskDescription({
+          opportunity,
+          templates: activeTemplates,
+          companyName: opportunity.companyName,
+          goal: opportunity.goal,
+          budgetUsd: String(
+            calculateStarterPodMonthlyPriceUsd(activeTemplates.length)
+          ),
+        })
+      );
+    },
+    []
+  );
+
+  const cycleStudioOpportunity = useCallback(
+    (direction: -1 | 1) => {
+      if (filteredStudioOpportunities.length <= 1) return;
+      const nextIndex =
+        (selectedOpportunityIndex + direction + filteredStudioOpportunities.length) %
+        filteredStudioOpportunities.length;
+      const nextOpportunity = filteredStudioOpportunities[nextIndex];
+      if (!nextOpportunity) return;
+      applyStudioConfiguration(nextOpportunity.id);
+    },
+    [
+      applyStudioConfiguration,
+      filteredStudioOpportunities,
+      selectedOpportunityIndex,
+    ]
+  );
+
+  const handleStudioDeckTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      studioDeckTouchStartXRef.current = event.touches[0]?.clientX ?? null;
+    },
+    []
+  );
+
+  const handleStudioDeckTouchEnd = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      const startX = studioDeckTouchStartXRef.current;
+      studioDeckTouchStartXRef.current = null;
+      if (startX === null) return;
+
+      const endX = event.changedTouches[0]?.clientX ?? startX;
+      const deltaX = endX - startX;
+      if (Math.abs(deltaX) < 42) return;
+
+      cycleStudioOpportunity(deltaX > 0 ? -1 : 1);
+    },
+    [cycleStudioOpportunity]
+  );
+
+  const toggleStarterTeamTemplate = useCallback(
+    (templateId: string) => {
+      const currentPrimary = selectedStarterPods[0] ?? DEFAULT_STARTER_TEAM_TEMPLATE;
+      const nextIds = selectedStarterTeamTemplateIds.includes(templateId)
+        ? selectedStarterTeamTemplateIds.length === 1
+          ? selectedStarterTeamTemplateIds
+          : selectedStarterTeamTemplateIds.filter((id) => id !== templateId)
+        : [...selectedStarterTeamTemplateIds, templateId];
+      const orderedIds = STARTER_TEAM_TEMPLATES.map((template) => template.id).filter(
+        (id) => nextIds.includes(id)
+      );
+      const nextTemplates = orderedIds
+        .map((id) => STARTER_TEAM_TEMPLATES.find((template) => template.id === id))
+        .filter(
+          (
+            template
+          ): template is StarterTeamTemplate => Boolean(template)
+        );
+      const nextPrimary = nextTemplates[0] ?? DEFAULT_STARTER_TEAM_TEMPLATE;
+
+      setSelectedStarterTeamTemplateIds(orderedIds);
+      setAgentName((current) => {
+        const trimmedCurrent = current.trim();
+        if (!trimmedCurrent || trimmedCurrent === currentPrimary.defaultAgentName) {
+          return nextPrimary.defaultAgentName;
+        }
+        return current;
+      });
+    },
+    [selectedStarterPods, selectedStarterTeamTemplateIds]
+  );
+
   useEffect(() => {
     setRouteDismissed(false);
   }, [location.pathname]);
@@ -174,10 +883,72 @@ export function OnboardingWizard() {
     setCreatedProjectId(null);
     setCreatedAgentId(null);
     setCreatedIssueRef(null);
+    setSelectedIndustry("all");
+    setSelectedFeedFilter("all");
+    setSwarmFrame(0);
+    if (!cId) {
+      applyStudioConfiguration(
+        DEFAULT_STUDIO_OPPORTUNITY.id,
+        [DEFAULT_STARTER_TEAM_TEMPLATE.id]
+      );
+    }
   }, [
     effectiveOnboardingOpen,
+    applyStudioConfiguration,
     effectiveOnboardingOptions.companyId,
     effectiveOnboardingOptions.initialStep
+  ]);
+
+  useEffect(() => {
+    if (!effectiveOnboardingOpen || step !== 1) return;
+    const timer = window.setInterval(() => {
+      setSwarmFrame((current) => current + 1);
+    }, 1300);
+    return () => window.clearInterval(timer);
+  }, [effectiveOnboardingOpen, step]);
+
+  useEffect(() => {
+    if (
+      filteredStudioOpportunities.some(
+        (entry) => entry.id === selectedOpportunityId
+      )
+    ) {
+      return;
+    }
+
+    const nextOpportunity = filteredStudioOpportunities[0];
+    if (!nextOpportunity) return;
+    applyStudioConfiguration(nextOpportunity.id);
+  }, [
+    applyStudioConfiguration,
+    filteredStudioOpportunities,
+    selectedOpportunityId,
+  ]);
+
+  useEffect(() => {
+    setActivationBudgetUsd(String(selectedStarterPodMonthlyUsd));
+  }, [selectedStarterPodMonthlyUsd]);
+
+  useEffect(() => {
+    if (!effectiveOnboardingOpen || step === 4 || taskDescriptionTouched) return;
+    setTaskDescription(
+      buildActivationTaskDescription({
+        opportunity: selectedOpportunity,
+        templates: selectedStarterPods,
+        companyName: companyName.trim() || selectedOpportunity.companyName,
+        goal: companyGoal.trim() || selectedOpportunity.goal,
+        budgetUsd: String(selectedStarterPodMonthlyUsd),
+      })
+    );
+  }, [
+    companyGoal,
+    companyName,
+    effectiveOnboardingOpen,
+    selectedOpportunity,
+    selectedStarterPodMonthlyUsd,
+    selectedStarterPods,
+    step,
+    taskDescriptionTouched,
   ]);
 
   // Backfill issue prefix for an existing company once companies are loaded.
@@ -281,9 +1052,14 @@ export function OnboardingWizard() {
     setStep(1);
     setLoading(false);
     setError(null);
-    setCompanyName("");
-    setCompanyGoal("");
-    setAgentName("CEO");
+    setTaskDescriptionTouched(false);
+    setSelectedIndustry("all");
+    setSelectedFeedFilter("all");
+    setSwarmFrame(0);
+    applyStudioConfiguration(
+      DEFAULT_STUDIO_OPPORTUNITY.id,
+      [DEFAULT_STARTER_TEAM_TEMPLATE.id]
+    );
     setAdapterType("claude_local");
     setModel("");
     setCommand("");
@@ -294,8 +1070,6 @@ export function OnboardingWizard() {
     setAdapterEnvLoading(false);
     setForceUnsetAnthropicApiKey(false);
     setUnsetAnthropicLoading(false);
-    setTaskTitle("Hire your first engineer and create a hiring plan");
-    setTaskDescription(DEFAULT_TASK_DESCRIPTION);
     setCreatedCompanyId(null);
     setCreatedCompanyPrefix(null);
     setCreatedCompanyGoalId(null);
@@ -379,14 +1153,44 @@ export function OnboardingWizard() {
     setLoading(true);
     setError(null);
     try {
-      const company = await companiesApi.create({ name: companyName.trim() });
+      const trimmedCompanyName = companyName.trim();
+      const trimmedGoal = companyGoal.trim();
+      const activationBudgetCents = parseUsdToCents(activationBudgetUsd);
+      const studioDescription = [
+        `${sourceLabel(selectedOpportunity.source)}: ${selectedOpportunity.title}.`,
+        selectedOpportunity.summary,
+        `Signal cluster: ${selectedOpportunity.signal}.`,
+        trimmedGoal ? `Current outcome: ${trimmedGoal}.` : null,
+        `Starter pods: ${selectedStarterPodTitles}.`,
+        "Activated inside the MSX startup studio.",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      setTaskDescription(
+        buildActivationTaskDescription({
+          opportunity: selectedOpportunity,
+          templates: selectedStarterPods,
+          companyName: trimmedCompanyName,
+          goal: trimmedGoal || selectedOpportunity.goal,
+          budgetUsd: String(selectedStarterPodMonthlyUsd),
+        })
+      );
+
+      const company = await companiesApi.create({
+        name: trimmedCompanyName,
+        description: studioDescription,
+        ...(activationBudgetCents > 0
+          ? { budgetMonthlyCents: activationBudgetCents }
+          : {}),
+      });
       setCreatedCompanyId(company.id);
       setCreatedCompanyPrefix(company.issuePrefix);
       setSelectedCompanyId(company.id);
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
 
-      if (companyGoal.trim()) {
-        const parsedGoal = parseOnboardingGoalInput(companyGoal);
+      if (trimmedGoal) {
+        const parsedGoal = parseOnboardingGoalInput(trimmedGoal);
         const goal = await goalsApi.create(company.id, {
           title: parsedGoal.title,
           ...(parsedGoal.description
@@ -636,18 +1440,20 @@ export function OnboardingWizard() {
           <div
             className={cn(
               "w-full flex flex-col overflow-y-auto transition-[width] duration-500 ease-in-out",
-              step === 1 ? "md:w-1/2" : "md:w-full"
+              "md:w-1/2"
             )}
           >
-            <div className="w-full max-w-md mx-auto my-auto px-8 py-12 shrink-0">
+            <div
+              className="w-full max-w-4xl mx-auto my-auto px-8 py-12 shrink-0"
+            >
               {/* Progress tabs */}
               <div className="flex items-center gap-0 mb-8 border-b border-border">
                 {(
                   [
-                    { step: 1 as Step, label: "Company", icon: Building2 },
-                    { step: 2 as Step, label: "Agent", icon: Bot },
-                    { step: 3 as Step, label: "Task", icon: ListTodo },
-                    { step: 4 as Step, label: "Launch", icon: Rocket }
+                    { step: 1 as Step, label: "Studio", icon: Building2 },
+                    { step: 2 as Step, label: "Lead", icon: Bot },
+                    { step: 3 as Step, label: "Outcomes", icon: ListTodo },
+                    { step: 4 as Step, label: "Activate", icon: Rocket }
                   ] as const
                 ).map(({ step: s, label, icon: Icon }) => (
                   <button
@@ -670,54 +1476,315 @@ export function OnboardingWizard() {
               {/* Step content */}
               {step === 1 && (
                 <div className="space-y-5">
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-muted/50 p-2">
-                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-muted/50 p-2">
+                        <Sparkles className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">
+                          Activate from the studio feed
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Swipe pre-validated outcomes, raw ideas, and live market
+                          signals from the MSX studio database. Pick the lane,
+                          lock the pod, and activate without writing from scratch.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium">Name your company</h3>
-                      <p className="text-xs text-muted-foreground">
-                        This is the organization your agents will work for.
-                      </p>
+                    <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      <Activity className="h-3.5 w-3.5" />
+                      Startup studio for agents
                     </div>
                   </div>
-                  <div className="mt-3 group">
-                    <label
-                      className={cn(
-                        "text-xs mb-1 block transition-colors",
-                        companyName.trim()
-                          ? "text-foreground"
-                          : "text-muted-foreground group-focus-within:text-foreground"
-                      )}
-                    >
-                      Company name
-                    </label>
-                    <input
-                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
-                      placeholder="Acme Corp"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      autoFocus
-                    />
+
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="rounded-2xl border border-border bg-card/60 p-4">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                        Industry focus
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {STUDIO_INDUSTRY_OPTIONS.map((industry) => {
+                          const isActive = industry.id === selectedIndustry;
+                          return (
+                            <button
+                              key={industry.id}
+                              type="button"
+                              onClick={() => setSelectedIndustry(industry.id)}
+                              className={cn(
+                                "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                                isActive
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-border bg-background/70 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                              )}
+                            >
+                              {industry.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-card/60 p-4">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                        Studio lanes
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {STUDIO_FEED_FILTERS.map((filter) => {
+                          const isActive = filter.id === selectedFeedFilter;
+                          return (
+                            <button
+                              key={filter.id}
+                              type="button"
+                              onClick={() => setSelectedFeedFilter(filter.id)}
+                              className={cn(
+                                "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                                isActive
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-border bg-background/70 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                              )}
+                            >
+                              {filter.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <div className="group">
-                    <label
-                      className={cn(
-                        "text-xs mb-1 block transition-colors",
-                        companyGoal.trim()
-                          ? "text-foreground"
-                          : "text-muted-foreground group-focus-within:text-foreground"
-                      )}
+
+                  <div className="rounded-[28px] border border-border bg-gradient-to-br from-background via-background to-accent/40 p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            {sourceLabel(selectedOpportunity.source)}
+                          </span>
+                          <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            {industryLabel(selectedOpportunity.industry)}
+                          </span>
+                          <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            {filteredStudioOpportunities.length} surfaced now
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                            MSX database sync
+                          </div>
+                          <h4 className="mt-2 text-2xl font-semibold tracking-tight">
+                            {selectedOpportunity.title}
+                          </h4>
+                          <p className="mt-1 text-sm font-medium text-foreground/85">
+                            {selectedOpportunity.tagline}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => cycleStudioOpportunity(-1)}
+                          className="rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/60"
+                          aria-label="Previous opportunity"
+                        >
+                          <ArrowLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => cycleStudioOpportunity(1)}
+                          className="rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/60"
+                          aria-label="Next opportunity"
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_220px]"
+                      onTouchStart={handleStudioDeckTouchStart}
+                      onTouchEnd={handleStudioDeckTouchEnd}
                     >
-                      Mission / goal (optional)
-                    </label>
-                    <textarea
-                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[60px]"
-                      placeholder="What is this company trying to achieve?"
-                      value={companyGoal}
-                      onChange={(e) => setCompanyGoal(e.target.value)}
-                    />
+                      <div className="space-y-4">
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          {selectedOpportunity.summary}
+                        </p>
+                        <div className="rounded-2xl border border-border bg-background/80 p-4">
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            Signal cluster
+                          </div>
+                          <p className="mt-2 text-sm leading-6">
+                            {selectedOpportunity.signal}
+                          </p>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          {selectedOpportunity.proofPoints.map((point) => (
+                            <div
+                              key={point}
+                              className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground"
+                            >
+                              {point}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="rounded-2xl border border-border bg-background/80 p-4">
+                          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            <TrendingUp className="h-3.5 w-3.5" />
+                            First ship
+                          </div>
+                          <p className="mt-2 text-sm font-medium">
+                            {selectedOpportunity.initialTaskTitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2">
+                        {selectedOpportunity.metrics.map((metric) => (
+                          <div
+                            key={metric.label}
+                            className="rounded-2xl border border-border bg-background/80 px-4 py-4"
+                          >
+                            <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                              {metric.label}
+                            </div>
+                            <div className="mt-2 text-sm font-medium">
+                              {metric.value}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {filteredStudioOpportunities.map((opportunity, index) => (
+                          <button
+                            key={opportunity.id}
+                            type="button"
+                            onClick={() => applyStudioConfiguration(opportunity.id)}
+                            className={cn(
+                              "h-2.5 rounded-full transition-all",
+                              opportunity.id === selectedOpportunity.id
+                                ? "w-8 bg-foreground"
+                                : "w-2.5 bg-border hover:bg-foreground/40"
+                            )}
+                            aria-label={`Select opportunity ${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Swipe cards or tap the queue below
+                      </div>
+                    </div>
                   </div>
+
+                  {queuedOpportunityCards.length > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {queuedOpportunityCards.map((opportunity) => (
+                        <button
+                          key={opportunity.id}
+                          type="button"
+                          onClick={() => applyStudioConfiguration(opportunity.id)}
+                          className="rounded-2xl border border-border bg-card/60 px-4 py-4 text-left transition-colors hover:bg-accent/35"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                              {sourceLabel(opportunity.source)}
+                            </span>
+                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                          <div className="mt-3 text-sm font-medium">
+                            {opportunity.title}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {opportunity.tagline}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-border bg-card/60 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            Simulated swarm
+                          </div>
+                          <h4 className="mt-2 text-base font-medium">
+                            Other agents are already moving
+                          </h4>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            MSX keeps the studio feeling active by surfacing
+                            what the agent swarm would already be doing for this
+                            opportunity.
+                          </p>
+                        </div>
+                        <Activity className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {visibleSwarmUpdates.map((update, index) => (
+                          <div
+                            key={`${update.agent}-${update.action}`}
+                            className="rounded-2xl border border-border bg-background/80 px-3 py-3"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <span
+                                  className={cn(
+                                    "h-2.5 w-2.5 rounded-full",
+                                    update.status === "live"
+                                      ? "bg-green-500 animate-pulse"
+                                      : update.status === "queued"
+                                      ? "bg-amber-500"
+                                      : "bg-sky-500"
+                                  )}
+                                />
+                                @{update.agent}
+                              </div>
+                              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                                {index === 0 ? "in progress" : update.eta}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                              {update.action}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
+                          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                            Active agents
+                          </div>
+                          <div className="mt-2 text-sm font-medium">04</div>
+                        </div>
+                        <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
+                          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                            Preview bias
+                          </div>
+                          <div className="mt-2 text-sm font-medium">
+                            5 min MVP
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
+                          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                            Design pass
+                          </div>
+                          <div className="mt-2 text-sm font-medium">
+                            /superdesign
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 border-t border-border pt-4 space-y-2">
+                        {STUDIO_PRIVILEGES.map((privilege) => (
+                          <div
+                            key={privilege}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />
+                            <span>{privilege}</span>
+                          </div>
+                        ))}
+                      </div>
+                  </div>
+
                 </div>
               )}
 
@@ -728,19 +1795,95 @@ export function OnboardingWizard() {
                       <Bot className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Create your first agent</h3>
+                      <h3 className="font-medium">Choose the founding lead</h3>
                       <p className="text-xs text-muted-foreground">
-                        Choose how this agent will run tasks.
+                        Pick the starter team template first, then choose the lead who gets the activation brief and keeps the project moving through launch and first revenue.
                       </p>
                     </div>
                   </div>
+                    <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        Starter team pods
+                      </div>
+                      <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        $58 / month each · all 4 for $148
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      {STARTER_TEAM_TEMPLATES.map((template) => {
+                        const isSelected =
+                          selectedStarterTeamTemplateIds.includes(template.id);
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            onClick={() => toggleStarterTeamTemplate(template.id)}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              "rounded-2xl border px-4 py-3 text-left transition-colors",
+                              isSelected
+                                ? "border-foreground bg-accent"
+                                : "border-border hover:bg-accent/40"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-medium">
+                                  {template.title}
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {template.summary}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1.5">
+                                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  $58 / mo
+                                </span>
+                                {template.id ===
+                                  selectedOpportunity.recommendedTemplateId && (
+                                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                    Recommended
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-3 text-[11px] text-muted-foreground">
+                              {template.founderBrief}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border bg-accent/30 p-4">
+                    <div className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Selected starter pods
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {selectedStarterPodCountLabel}
+                      </span>
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                        {selectedStarterPodPriceLabel}
+                      </span>
+                      {allStarterPodsSelected && (
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                          All-access bundle
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {selectedStarterPodTitles}
+                    </p>
+                  </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">
-                      Agent name
+                      Lead name
                     </label>
                     <input
                       className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
-                      placeholder="CEO"
+                      placeholder="Studio CEO"
                       value={agentName}
                       onChange={(e) => setAgentName(e.target.value)}
                       autoFocus
@@ -1153,35 +2296,56 @@ export function OnboardingWizard() {
                       <ListTodo className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Give it something to do</h3>
+                      <h3 className="font-medium">Set goals and outcomes</h3>
                       <p className="text-xs text-muted-foreground">
-                        Give your agent a small task to start with — a bug fix,
-                        a research question, writing a script.
+                        Lock the project goal first, then refine the activation brief the founding lead receives. This is where outcome clarity and the first shipping instructions come together.
                       </p>
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">
-                      Task title
+                      Goals and outcomes
+                    </label>
+                    <textarea
+                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[96px]"
+                      placeholder="What is this project trying to ship, prove, and monetize first?"
+                      value={companyGoal}
+                      onChange={(e) => setCompanyGoal(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="rounded-xl border border-border bg-accent/30 p-4">
+                    <div className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Design rule
+                    </div>
+                    <p className="mt-2 text-sm">
+                      Generate the first usable preview quickly, then use Superdesign to turn it into a polished product surface.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Activation brief title
                     </label>
                     <input
                       className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
-                      placeholder="e.g. Research competitor pricing"
+                      placeholder="e.g. Activate Elder Memory Mobile and ship the first public MVP"
                       value={taskTitle}
                       onChange={(e) => setTaskTitle(e.target.value)}
-                      autoFocus
                     />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">
-                      Description (optional)
+                      Activation instructions
                     </label>
                     <textarea
                       ref={textareaRef}
                       className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[120px] max-h-[300px] overflow-y-auto"
-                      placeholder="Add more detail about what the agent should do..."
+                      placeholder="Tell the lead how to activate the company, use Superdesign, and organize the build, launch, virality, and revenue lanes."
                       value={taskDescription}
-                      onChange={(e) => setTaskDescription(e.target.value)}
+                      onChange={(e) => {
+                        setTaskDescriptionTouched(true);
+                        setTaskDescription(e.target.value);
+                      }}
                     />
                   </div>
                 </div>
@@ -1194,10 +2358,9 @@ export function OnboardingWizard() {
                       <Rocket className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Ready to launch</h3>
+                      <h3 className="font-medium">Ready to activate</h3>
                       <p className="text-xs text-muted-foreground">
-                        Everything is set up. Launching now will create the
-                        starter task, wake the agent, and open the issue.
+                        Activating now will create the studio company, seed the activation lane, wake the lead, and open the first issue.
                       </p>
                     </div>
                   </div>
@@ -1208,7 +2371,19 @@ export function OnboardingWizard() {
                         <p className="text-sm font-medium truncate">
                           {companyName}
                         </p>
-                        <p className="text-xs text-muted-foreground">Company</p>
+                        <p className="text-xs text-muted-foreground">Studio company</p>
+                      </div>
+                      <Check className="h-4 w-4 text-green-500 shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-3 px-3 py-2.5">
+                      <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {selectedOpportunity.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {sourceLabel(selectedOpportunity.source)} · {selectedOpportunity.signal}
+                        </p>
                       </div>
                       <Check className="h-4 w-4 text-green-500 shrink-0" />
                     </div>
@@ -1219,7 +2394,7 @@ export function OnboardingWizard() {
                           {agentName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {getUIAdapter(adapterType).label}
+                          {selectedStarterPodCountLabel} · {getUIAdapter(adapterType).label}
                         </p>
                       </div>
                       <Check className="h-4 w-4 text-green-500 shrink-0" />
@@ -1230,7 +2405,19 @@ export function OnboardingWizard() {
                         <p className="text-sm font-medium truncate">
                           {taskTitle}
                         </p>
-                        <p className="text-xs text-muted-foreground">Task</p>
+                        <p className="text-xs text-muted-foreground">Activation brief</p>
+                      </div>
+                      <Check className="h-4 w-4 text-green-500 shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-3 px-3 py-2.5">
+                      <Rocket className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {selectedStarterPodPriceLabel}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Starter pod plan · Superdesign expected in the design loop
+                        </p>
                       </div>
                       <Check className="h-4 w-4 text-green-500 shrink-0" />
                     </div>
@@ -1312,7 +2499,7 @@ export function OnboardingWizard() {
                       ) : (
                         <ArrowRight className="h-3.5 w-3.5 mr-1" />
                       )}
-                      {loading ? "Creating..." : "Create & Open Issue"}
+                      {loading ? "Activating..." : "Activate company"}
                     </Button>
                   )}
                 </div>
@@ -1324,7 +2511,7 @@ export function OnboardingWizard() {
           <div
             className={cn(
               "hidden md:block overflow-hidden bg-[#1d1d1d] transition-[width,opacity] duration-500 ease-in-out",
-              step === 1 ? "w-1/2 opacity-100" : "w-0 opacity-0"
+              "w-1/2 opacity-100"
             )}
           >
             <AsciiArtAnimation />

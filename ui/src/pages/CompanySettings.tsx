@@ -8,8 +8,14 @@ import { accessApi } from "../api/access";
 import { assetsApi } from "../api/assets";
 import { queryKeys } from "../lib/queryKeys";
 import { Button } from "@/components/ui/button";
-import { Settings, Check, Download, Upload } from "lucide-react";
+import { Settings, Bot, Check, Coins, Download, FolderOpen, PlugZap, Sparkles, Upload } from "lucide-react";
+import { Link } from "@/lib/router";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
+import {
+  SUPERDESIGN_APP_URL,
+  SUPERDESIGN_DOCS_URL,
+  SUPERDESIGN_REPO_URL,
+} from "../lib/superdesign";
 import {
   Field,
   ToggleField,
@@ -220,11 +226,167 @@ export function CompanySettings() {
     });
   }
 
+  const quickActions = [
+    {
+      title: "Budget",
+      description: "Set caps, watch costs, and manage the company spending lane.",
+      href: "/costs",
+      icon: Coins
+    },
+    {
+      title: "Agent Setup",
+      description: "Review the active fleet and tune how the company is staffed.",
+      href: "/agents/all",
+      icon: Bot
+    },
+    {
+      title: "Resources",
+      description: "Open the MSX ecosystem links, docs, and operating references.",
+      href: "/resources",
+      icon: FolderOpen
+    },
+    {
+      title: "Design Studio",
+      description: "Use the installed Superdesign skill and CLI by default, then open the app only when you need manual visual exploration.",
+      href: SUPERDESIGN_APP_URL,
+      icon: Sparkles,
+      external: true
+    },
+    {
+      title: "Integrations",
+      description: "Use the public MSX repos as the current reference for product language and surface area.",
+      href: "https://github.com/longevusmarcus/mothership-glow",
+      icon: PlugZap,
+      external: true
+    },
+    {
+      title: "MSX Definition",
+      description: "Review the msxbot positioning for what MSX is building toward.",
+      href: "https://github.com/longevusmarcus/msxbot",
+      icon: Sparkles,
+      external: true
+    },
+    {
+      title: "Design Docs",
+      description: "Review Superdesign docs and CLI workflows for importing live previews and shipping polished HTML.",
+      href: SUPERDESIGN_DOCS_URL,
+      icon: PlugZap,
+      external: true
+    }
+  ];
+
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-2">
         <Settings className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-lg font-semibold">Company Settings</h1>
+        <h1 className="text-lg font-semibold">MSX Settings</h1>
+      </div>
+
+      <div className="space-y-3 rounded-xl border border-border bg-card/60 px-4 py-4">
+        <div className="space-y-1">
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            Control room
+          </div>
+          <h2 className="text-base font-semibold">Operate this company like an MSX workspace</h2>
+          <p className="text-sm text-muted-foreground">
+            This settings layer keeps the existing controls, but the language now follows the public
+            MSX model: companies, agents, budgets, integrations, and product-shipping workflows.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            if (action.external) {
+              return (
+                <a
+                  key={action.title}
+                  href={action.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-border bg-background/70 p-3 transition-colors hover:border-foreground/25 hover:bg-background"
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{action.title}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{action.description}</p>
+                </a>
+              );
+            }
+
+            return (
+              <Link
+                key={action.title}
+                to={action.href}
+                className="rounded-xl border border-border bg-background/70 p-3 transition-colors hover:border-foreground/25 hover:bg-background"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{action.title}</span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{action.description}</p>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-xl border border-border bg-card/60 px-4 py-4">
+        <div className="space-y-1">
+          <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            Design standard
+          </div>
+          <h2 className="text-base font-semibold">Every digital product ships with a design lane</h2>
+          <p className="text-sm text-muted-foreground">
+            Functional is not enough. MSX should ship previewable MVPs fast, then run a focused
+            visual polish pass through the installed Superdesign workflow before calling a digital product truly ready.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {[
+            "Spin up a live preview immediately so the product can be reviewed visually.",
+            "Run superdesign init and use /superdesign to clone the preview, explore stronger UI directions, and export refined HTML.",
+            "Keep typography, spacing, contrast, and hierarchy intentional even in the 5-minute MVP slice.",
+            "Treat weak design as unfinished work, not post-launch cleanup.",
+          ].map((item) => (
+            <div
+              key={item}
+              className="rounded-xl border border-border bg-background/70 px-3 py-3 text-sm text-muted-foreground"
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-border bg-background/70 px-4 py-3 text-xs text-muted-foreground">
+          Superdesign sources:
+          {" "}
+          <a
+            href={SUPERDESIGN_APP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground underline underline-offset-4"
+          >
+            app.superdesign.dev
+          </a>
+          {" · "}
+          <a
+            href={SUPERDESIGN_DOCS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground underline underline-offset-4"
+          >
+            docs
+          </a>
+          {" · "}
+          <a
+            href={SUPERDESIGN_REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground underline underline-offset-4"
+          >
+            platform repo
+          </a>
+        </div>
       </div>
 
       {/* General */}
@@ -557,35 +719,35 @@ function buildAgentSnippet(input: AgentSnippetInput) {
 
   const connectivityBlock =
     candidateUrls.length === 0
-      ? `No candidate URLs are available. Ask your user to configure a reachable hostname in Paperclip, then retry.
+      ? `No candidate URLs are available. Ask your user to configure a reachable hostname in MSX, then retry.
 Suggested steps:
-- choose a hostname that resolves to the Paperclip host from your runtime
-- run: pnpm paperclipai allowed-hostname <host>
-- restart Paperclip
+- choose a hostname that resolves to the MSX host from your runtime
+- run: pnpm msx allowed-hostname <host>
+- restart MSX
 - verify with: curl -fsS http://<host>:3100/api/health
 - regenerate this invite snippet`
-      : `If none are reachable, ask your user to add a reachable hostname in Paperclip, restart, and retry.
+      : `If none are reachable, ask your user to add a reachable hostname in MSX, restart, and retry.
 Suggested command:
-- pnpm paperclipai allowed-hostname <host>
+- pnpm msx allowed-hostname <host>
 Then verify with: curl -fsS <base-url>/api/health`;
 
   const resolutionLine = resolutionTestUrl
-    ? `\nYou MUST test Paperclip-to-gateway reachability, call: ${resolutionTestUrl}?url=<urlencoded-gateway-url> (using the hostname that worked above). Do not assume your 172.x is necessarily reachable from Paperclip. Test it. `
+    ? `\nYou MUST test MSX-to-gateway reachability, call: ${resolutionTestUrl}?url=<urlencoded-gateway-url> (using the hostname that worked above). Do not assume your 172.x is necessarily reachable from MSX. Test it. `
     : "";
 
-  return `You're invited to join a Paperclip organization.
+  return `You're invited to join an MSX organization.
 
 The URLs you should try are:
 ${candidateList}
 
 Connectivity guidance:
-If you are running on a different machine than Paperclip, Paperclip must be reachable at one of the hostnames used above.
+If you are running on a different machine than MSX, MSX must be reachable at one of the hostnames used above.
 Verify the hostname works from your runtime with: GET <base-url>/api/health
 
 ${connectivityBlock}
 
 For your "agentName", just use your own agent name (OpenClaw or whatever your name is) and send it directly.
-You also need to send a gateway URL that Paperclip can access. Check your config and include that URL.${resolutionLine}
+You also need to send a gateway URL that MSX can access. Check your config and include that URL.${resolutionLine}
 
 ---
 
@@ -595,14 +757,14 @@ When you submit the join request, use:
 - \`agentDefaultsPayload.url\` as your \`ws://\` or \`wss://\` gateway URL
 - \`agentDefaultsPayload.headers["x-openclaw-token"]\` with your gateway token
 - (legacy accepted) \`agentDefaultsPayload.headers["x-openclaw-auth"]\`
-- Keep device auth enabled (recommended). If \`devicePrivateKeyPem\` is omitted, Paperclip will generate and persist one during join so pairing approvals remain stable.
+- Keep device auth enabled (recommended). If \`devicePrivateKeyPem\` is omitted, MSX will generate and persist one during join so pairing approvals remain stable.
 - Only use \`disableDeviceAuth=true\` for special environments where pairing cannot be completed.
 
 Do NOT use \`/v1/responses\` or \`/hooks/*\` in this join flow.
 
-Before you do anything, please respond to your user that you understand the instructions and you're going to work on them. Then do the step above in another session called "paperclip-onboarding" and then tell your user when you're done. Update your user in intermediate steps along the way so they know what's going on.
+Before you do anything, please respond to your user that you understand the instructions and you're going to work on them. Then do the step above in another session called "msx-onboarding" and then tell your user when you're done. Update your user in intermediate steps along the way so they know what's going on.
 
-Then after you've connected to Paperclip (exchanged keys etc.) you MUST review and follow the onboarding instructions in onboarding.txt they give you.
+Then after you've connected to MSX (exchanged keys etc.) you MUST review and follow the onboarding instructions in onboarding.txt they give you.
 
 `;
 }

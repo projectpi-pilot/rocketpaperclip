@@ -1,6 +1,33 @@
 import type { Project, ProjectWorkspace } from "@paperclipai/shared";
 import { api } from "./client";
 
+export interface LocalPreviewSurface {
+  id: string;
+  title: string;
+  url: string;
+  meta: string;
+  framework: string;
+  source: "workspace_process";
+}
+
+export interface LocalPreviewDiscovery {
+  workspacePath: string | null;
+  framework: string | null;
+  packageManager: string | null;
+  suggestedStartCommand: string | null;
+  surfaces: LocalPreviewSurface[];
+  notes: string[];
+  managedProcess: {
+    pid: number | null;
+    command: string | null;
+    logPath: string | null;
+    startedAt: string | null;
+    framework: string | null;
+    port: number | null;
+    status: "starting" | "running" | "stopped";
+  } | null;
+}
+
 function withCompanyScope(path: string, companyId?: string) {
   if (!companyId) return path;
   const separator = path.includes("?") ? "&" : "?";
@@ -20,6 +47,12 @@ export const projectsApi = {
     api.patch<Project>(projectPath(id, companyId), data),
   listWorkspaces: (projectId: string, companyId?: string) =>
     api.get<ProjectWorkspace[]>(projectPath(projectId, companyId, "/workspaces")),
+  localPreview: (projectId: string, companyId?: string) =>
+    api.get<LocalPreviewDiscovery>(projectPath(projectId, companyId, "/local-preview")),
+  startLocalPreview: (projectId: string, companyId?: string) =>
+    api.post<LocalPreviewDiscovery>(projectPath(projectId, companyId, "/local-preview/start"), {}),
+  stopLocalPreview: (projectId: string, companyId?: string) =>
+    api.post<LocalPreviewDiscovery>(projectPath(projectId, companyId, "/local-preview/stop"), {}),
   createWorkspace: (projectId: string, data: Record<string, unknown>, companyId?: string) =>
     api.post<ProjectWorkspace>(projectPath(projectId, companyId, "/workspaces"), data),
   updateWorkspace: (projectId: string, workspaceId: string, data: Record<string, unknown>, companyId?: string) =>

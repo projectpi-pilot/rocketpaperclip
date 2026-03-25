@@ -4,12 +4,16 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Approval, DashboardSummary, HeartbeatRun, Issue, JoinRequest } from "@paperclipai/shared";
 import {
   computeInboxBadgeData,
+  DISMISSED_KEY,
   getApprovalsForTab,
   getInboxWorkItems,
   getRecentTouchedIssues,
   getUnreadTouchedIssues,
+  INBOX_DISMISSED_UPDATED_EVENT,
+  loadDismissedInboxItems,
   loadLastInboxTab,
   RECENT_ISSUES_LIMIT,
+  saveDismissedInboxItems,
   saveLastInboxTab,
   shouldShowInboxSection,
 } from "./inbox";
@@ -382,5 +386,37 @@ describe("inbox helpers", () => {
   it("maps legacy new-tab storage to recent", () => {
     localStorage.setItem("paperclip:inbox:last-tab", "new");
     expect(loadLastInboxTab()).toBe("recent");
+  });
+
+  it("persists dismissed inbox items and emits a same-tab sync event", () => {
+    const receivedTypes: string[] = [];
+    const originalWindow = (globalThis as typeof globalThis & { window?: { dispatchEvent?: (event: Event) => boolean } }).window;
+
+    Object.defineProperty(globalThis, "window", {
+      value: {
+        dispatchEvent: (event: Event) => {
+          receivedTypes.push(event.type);
+          return true;
+        },
+      },
+      configurable: true,
+    });
+
+    try {
+      saveDismissedInboxItems(new Set(["run:run-1", "alert:budget"]));
+
+      expect(localStorage.getItem(DISMISSED_KEY)).toBe(JSON.stringify(["run:run-1", "alert:budget"]));
+      expect([...loadDismissedInboxItems()]).toEqual(["run:run-1", "alert:budget"]);
+      expect(receivedTypes).toContain(INBOX_DISMISSED_UPDATED_EVENT);
+    } finally {
+      if (originalWindow === undefined) {
+        Reflect.deleteProperty(globalThis, "window");
+      } else {
+        Object.defineProperty(globalThis, "window", {
+          value: originalWindow,
+          configurable: true,
+        });
+      }
+    }
   });
 });

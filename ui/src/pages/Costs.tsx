@@ -24,6 +24,7 @@ import { PageSkeleton } from "../components/PageSkeleton";
 import { PageTabBar } from "../components/PageTabBar";
 import { ProviderQuotaCard } from "../components/ProviderQuotaCard";
 import { StatusBadge } from "../components/StatusBadge";
+import { heartbeatsApi } from "../api/heartbeats";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useCompany } from "../context/CompanyContext";
 import { useDateRange, PRESET_KEYS, PRESET_LABELS } from "../hooks/useDateRange";
@@ -42,6 +43,17 @@ function currentWeekRange(): { from: string; to: string } {
   const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon, 0, 0, 0, 0);
   const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6, 23, 59, 59, 999);
   return { from: mon.toISOString(), to: sun.toISOString() };
+}
+
+function budgetStatusFromObservedAmount(
+  observedAmount: number,
+  amount: number,
+  warnPercent: number,
+): BudgetPolicySummary["status"] {
+  if (amount <= 0) return "ok";
+  if (observedAmount >= amount) return "hard_stop";
+  if (observedAmount >= Math.ceil((amount * warnPercent) / 100)) return "warning";
+  return "ok";
 }
 
 function ProviderTabLabel({ provider, rows }: { provider: string; rows: CostByProviderModel[] }) {
@@ -147,7 +159,7 @@ function FinanceSummaryCard({
 }
 
 export function Costs() {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompanyId, selectedCompany } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const queryClient = useQueryClient();
 
@@ -190,6 +202,19 @@ export function Costs() {
 
   const weekRange = useMemo(() => currentWeekRange(), [today]);
   const companyId = selectedCompanyId ?? NO_COMPANY;
+  const liveRefreshIntervalMs = 2_500;
+  const idleRefreshIntervalMs = 30_000;
+
+  const { data: liveRuns } = useQuery({
+    queryKey: queryKeys.liveRuns(companyId),
+    queryFn: () => heartbeatsApi.liveRunsForCompany(companyId),
+    enabled: !!selectedCompanyId,
+    refetchInterval: 5_000,
+    staleTime: 2_000,
+  });
+
+  const liveRunCount = liveRuns?.length ?? 0;
+  const costRefreshInterval = liveRunCount > 0 ? liveRefreshIntervalMs : idleRefreshIntervalMs;
 
   const { data: budgetData, isLoading: budgetLoading, error: budgetError } = useQuery({
     queryKey: queryKeys.budgets.overview(companyId),
@@ -201,10 +226,14 @@ export function Costs() {
 
   const invalidateBudgetViews = () => {
     if (!selectedCompanyId) return;
+    queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.budgets.overview(selectedCompanyId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(selectedCompanyId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(selectedCompanyId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.projects.list(selectedCompanyId) });
+    queryClient.invalidateQueries({ queryKey: ["costs", selectedCompanyId] });
+    queryClient.invalidateQueries({ queryKey: ["usage-by-provider", selectedCompanyId] });
+    queryClient.invalidateQueries({ queryKey: ["usage-by-biller", selectedCompanyId] });
   };
 
   const policyMutation = useMutation({
@@ -241,6 +270,8 @@ export function Costs() {
       return { summary, byAgent, byProject, byAgentModel };
     },
     enabled: !!selectedCompanyId && customReady,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const { data: financeData, isLoading: financeLoading, error: financeError } = useQuery({
@@ -260,6 +291,8 @@ export function Costs() {
       return { summary, byBiller, byKind, events };
     },
     enabled: !!selectedCompanyId && customReady,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
@@ -293,40 +326,40 @@ export function Costs() {
     queryKey: queryKeys.usageByProvider(companyId, from || undefined, to || undefined),
     queryFn: () => costsApi.byProvider(companyId, from || undefined, to || undefined),
     enabled: !!selectedCompanyId && customReady && (mainTab === "providers" || mainTab === "billers"),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const { data: billerData } = useQuery({
     queryKey: queryKeys.usageByBiller(companyId, from || undefined, to || undefined),
     queryFn: () => costsApi.byBiller(companyId, from || undefined, to || undefined),
     enabled: !!selectedCompanyId && customReady && mainTab === "billers",
-    refetchInterval: 30_000,
-    staleTime: 10_000,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const { data: weekData } = useQuery({
     queryKey: queryKeys.usageByProvider(companyId, weekRange.from, weekRange.to),
     queryFn: () => costsApi.byProvider(companyId, weekRange.from, weekRange.to),
     enabled: !!selectedCompanyId && (mainTab === "providers" || mainTab === "billers"),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const { data: weekBillerData } = useQuery({
     queryKey: queryKeys.usageByBiller(companyId, weekRange.from, weekRange.to),
     queryFn: () => costsApi.byBiller(companyId, weekRange.from, weekRange.to),
     enabled: !!selectedCompanyId && mainTab === "billers",
-    refetchInterval: 30_000,
-    staleTime: 10_000,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const { data: windowData } = useQuery({
     queryKey: queryKeys.usageWindowSpend(companyId),
     queryFn: () => costsApi.windowSpend(companyId),
     enabled: !!selectedCompanyId && mainTab === "providers",
-    refetchInterval: 30_000,
-    staleTime: 10_000,
+    refetchInterval: costRefreshInterval,
+    staleTime: liveRunCount > 0 ? 1_000 : 10_000,
   });
 
   const { data: quotaData, isLoading: quotaLoading } = useQuery({
@@ -518,6 +551,10 @@ export function Costs() {
       (sum, row) => sum + row.inputTokens + row.cachedInputTokens + row.outputTokens,
       0,
     );
+  const subscriptionIncludedUsage =
+    (spendData?.byAgentModel ?? []).some((row) => row.billingType === "subscription_included") &&
+    (spendData?.summary.spendCents ?? 0) === 0 &&
+    inferenceTokenTotal > 0;
 
   const topFinanceEvents = (financeData?.events ?? []) as FinanceEvent[];
   const budgetPolicies = budgetData?.policies ?? [];
@@ -527,6 +564,54 @@ export function Costs() {
     agent: budgetPolicies.filter((policy) => policy.scopeType === "agent"),
     project: budgetPolicies.filter((policy) => policy.scopeType === "project"),
   }), [budgetPolicies]);
+  const companyBudgetPolicy = useMemo(
+    () =>
+      budgetPolicies.find(
+        (policy) => policy.scopeType === "company" && policy.scopeId === selectedCompanyId,
+      ) ?? null,
+    [budgetPolicies, selectedCompanyId],
+  );
+  const companyBudgetSummary = useMemo(() => {
+    if (!selectedCompanyId) return null;
+    if (companyBudgetPolicy) return companyBudgetPolicy;
+
+    const observedAmount = spendData?.summary.spendCents ?? selectedCompany?.spentMonthlyCents ?? 0;
+    const amount =
+      spendData?.summary.budgetCents ??
+      selectedCompany?.budgetMonthlyCents ??
+      0;
+    const warnPercent = 80;
+
+    return (
+      {
+        policyId: `company-${selectedCompanyId}`,
+        companyId: selectedCompanyId,
+        scopeType: "company",
+        scopeId: selectedCompanyId,
+        scopeName: selectedCompany?.name ?? "Company",
+        metric: "billed_cents",
+        windowKind: "calendar_month_utc",
+        amount,
+        observedAmount,
+        remainingAmount: amount > 0 ? Math.max(0, amount - observedAmount) : 0,
+        utilizationPercent:
+          amount > 0 ? Number(((observedAmount / amount) * 100).toFixed(2)) : 0,
+        warnPercent,
+        hardStopEnabled: true,
+        notifyEnabled: true,
+        isActive: amount > 0,
+        status: budgetStatusFromObservedAmount(observedAmount, amount, warnPercent),
+        paused: selectedCompany?.pauseReason === "budget",
+        pauseReason: selectedCompany?.pauseReason ?? null,
+        windowStart: new Date(),
+        windowEnd: new Date(),
+      } satisfies BudgetPolicySummary
+    );
+  }, [companyBudgetPolicy, selectedCompany, selectedCompanyId, spendData?.summary.budgetCents, spendData?.summary.spendCents]);
+  const hasScopedBudgetPolicies = useMemo(
+    () => budgetPolicies.some((policy) => policy.scopeType !== "company"),
+    [budgetPolicies],
+  );
 
   if (!selectedCompanyId) {
     return <EmptyState icon={DollarSign} message="Select a company to view costs." />;
@@ -544,6 +629,11 @@ export function Costs() {
                 <h1 className="text-3xl font-semibold tracking-tight">Costs</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                   Inference spend, platform fees, credits, and live quota windows.
+                </p>
+                <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  {liveRunCount > 0
+                    ? `${liveRunCount} live run${liveRunCount === 1 ? "" : "s"} · auto-refresh every ${Math.round(costRefreshInterval / 1000)}s`
+                    : "watching for new spend and token activity"}
                 </p>
             </div>
 
@@ -579,11 +669,15 @@ export function Costs() {
             </div>
           ) : null}
 
-          <div className="grid gap-3 lg:grid-cols-4">
+          <div className="grid gap-3 lg:grid-cols-5">
             <MetricTile
-              label="Inference spend"
-              value={formatCents(spendData?.summary.spendCents ?? 0)}
-              subtitle={`${formatTokens(inferenceTokenTotal)} tokens across request-scoped events`}
+              label={subscriptionIncludedUsage ? "Billed spend" : "Inference spend"}
+              value={subscriptionIncludedUsage ? "Included" : formatCents(spendData?.summary.spendCents ?? 0)}
+              subtitle={
+                subscriptionIncludedUsage
+                  ? `${formatTokens(inferenceTokenTotal)} tokens tracked on subscription-included runs`
+                  : `${formatTokens(inferenceTokenTotal)} tokens across request-scoped events`
+              }
               icon={DollarSign}
             />
             <MetricTile
@@ -595,7 +689,7 @@ export function Costs() {
               )}
               subtitle={
                 activeBudgetIncidents.length > 0
-                  ? `${budgetData?.pausedAgentCount ?? 0} agents paused · ${budgetData?.pausedProjectCount ?? 0} projects paused`
+                  ? `${budgetData?.pausedAgentCount ?? 0} agents paused · ${budgetData?.pausedProjectCount ?? 0} companies paused`
                   : spendData?.summary.budgetCents && spendData.summary.budgetCents > 0
                     ? `${formatCents(spendData.summary.spendCents)} of ${formatCents(spendData.summary.budgetCents)}`
                     : "No monthly cap configured"
@@ -614,7 +708,23 @@ export function Costs() {
               subtitle={`${formatCents(financeData?.summary.estimatedDebitCents ?? 0)} estimated in range`}
               icon={ArrowUpRight}
             />
+            <MetricTile
+              label="Live runs"
+              value={String(liveRunCount)}
+              subtitle={
+                liveRunCount > 0
+                  ? `Refreshing every ${Math.round(costRefreshInterval / 1000)}s while agents run`
+                  : "Idle until the next company run starts"
+              }
+              icon={ReceiptText}
+            />
           </div>
+
+          {subscriptionIncludedUsage ? (
+            <div className="border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+              Usage is being tracked live, but billed dollars remain <span className="font-medium text-foreground">included</span> because this fleet is currently billed as <span className="font-medium text-foreground">subscription included</span> through <span className="font-medium text-foreground">ChatGPT</span>. MSX budget enforcement currently uses billed cents only, so dollar caps will not trip for these runs until the fleet moves to metered API billing.
+            </div>
+          ) : null}
       </div>
 
       <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as typeof mainTab)}>
@@ -842,7 +952,7 @@ export function Costs() {
                 <CardHeader className="px-5 pt-5 pb-3">
                   <CardTitle className="text-base">Budget control plane</CardTitle>
                   <CardDescription>
-                    Hard-stop spend limits for agents and projects. Provider subscription quota stays separate and appears under Providers.
+                    Hard-stop billed-spend limits for the company, agents, and projects. Provider subscription quota stays separate and appears under Providers.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-3 px-5 pb-5 pt-0 md:grid-cols-4">
@@ -873,6 +983,36 @@ export function Costs() {
                 </CardContent>
               </Card>
 
+              {subscriptionIncludedUsage ? (
+                <Card>
+                  <CardContent className="px-5 py-4 text-sm text-muted-foreground">
+                    Your current runs are landing as <span className="font-medium text-foreground">subscription-included</span> usage with <span className="font-medium text-foreground">$0.00 billed cents</span>. You can still store a company budget below, but it will only enforce against metered API spend until the fleet billing path is switched.
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {companyBudgetSummary ? (
+                <section className="space-y-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Company monthly budget</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Set the top-line monthly budget policy for the whole company.
+                    </p>
+                  </div>
+                  <BudgetPolicyCard
+                    summary={companyBudgetSummary}
+                    isSaving={policyMutation.isPending}
+                    onSave={(amount) =>
+                      policyMutation.mutate({
+                        scopeType: "company",
+                        scopeId: selectedCompanyId,
+                        amount,
+                        windowKind: "calendar_month_utc",
+                      })}
+                  />
+                </section>
+              ) : null}
+
               {activeBudgetIncidents.length > 0 ? (
                 <div className="space-y-3">
                   <div>
@@ -901,7 +1041,7 @@ export function Costs() {
               ) : null}
 
               <div className="space-y-5">
-                {(["company", "agent", "project"] as const).map((scopeType) => {
+                {(["agent", "project"] as const).map((scopeType) => {
                   const rows = budgetPoliciesByScope[scopeType];
                   if (rows.length === 0) return null;
                   return (
@@ -909,11 +1049,9 @@ export function Costs() {
                       <div>
                         <h2 className="text-lg font-semibold capitalize">{scopeType} budgets</h2>
                         <p className="text-sm text-muted-foreground">
-                          {scopeType === "company"
-                            ? "Company-wide monthly policy."
-                            : scopeType === "agent"
-                              ? "Recurring monthly spend policies for individual agents."
-                              : "Lifetime spend policies for execution-bound projects."}
+                          {scopeType === "agent"
+                            ? "Recurring monthly spend policies for individual agents."
+                            : "Lifetime spend policies for execution-bound projects."}
                         </p>
                       </div>
                       <div className="grid gap-4 xl:grid-cols-2">
@@ -936,10 +1074,10 @@ export function Costs() {
                   );
                 })}
 
-                {budgetPolicies.length === 0 ? (
+                {!hasScopedBudgetPolicies ? (
                   <Card>
                     <CardContent className="px-5 py-8 text-sm text-muted-foreground">
-                      No budget policies yet. Set agent and project budgets from their detail pages, or use the existing company monthly budget control.
+                      No agent or project budget policies yet. Use the Budget tabs on agent and project detail pages to add scoped caps beyond the company limit.
                     </CardContent>
                   </Card>
                 ) : null}

@@ -11,6 +11,7 @@ export const FAILED_RUN_STATUSES = new Set(["failed", "timed_out"]);
 export const ACTIONABLE_APPROVAL_STATUSES = new Set(["pending", "revision_requested"]);
 export const DISMISSED_KEY = "paperclip:inbox:dismissed";
 export const INBOX_LAST_TAB_KEY = "paperclip:inbox:last-tab";
+export const INBOX_DISMISSED_UPDATED_EVENT = "paperclip:inbox:dismissed-updated";
 export type InboxTab = "recent" | "unread" | "all";
 export type InboxApprovalFilter = "all" | "actionable" | "resolved";
 export type InboxWorkItem =
@@ -56,6 +57,13 @@ export function loadDismissedInboxItems(): Set<string> {
 export function saveDismissedInboxItems(ids: Set<string>) {
   try {
     localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+    if (typeof window !== "undefined") {
+      const event =
+        typeof CustomEvent === "function"
+          ? new CustomEvent(INBOX_DISMISSED_UPDATED_EVENT)
+          : new Event(INBOX_DISMISSED_UPDATED_EVENT);
+      window.dispatchEvent(event);
+    }
   } catch {
     // Ignore localStorage failures.
   }

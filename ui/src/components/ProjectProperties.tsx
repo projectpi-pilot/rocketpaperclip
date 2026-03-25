@@ -687,7 +687,7 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
                     {codebase.effectiveLocalFolder}
                   </div>
                   {codebase.origin === "managed_checkout" && (
-                    <div className="text-[11px] text-muted-foreground">Paperclip-managed folder.</div>
+                    <div className="text-[11px] text-muted-foreground">MSX-managed folder.</div>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
@@ -719,7 +719,7 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
 
             {hasAdditionalLegacyWorkspaces && (
               <div className="text-[11px] text-muted-foreground">
-                Additional legacy workspace records exist on this project. Paperclip is using the primary workspace as the codebase view.
+                Additional legacy workspace records exist on this project. MSX is using the primary workspace as the codebase view.
               </div>
             )}
 
@@ -876,15 +876,15 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
               </div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <span>Enable isolated issue checkouts</span>
-                      <SaveIndicator state={fieldState("execution_workspace_enabled")} />
-                    </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <span>Enable isolated issue checkouts</span>
+                        <SaveIndicator state={fieldState("execution_workspace_enabled")} />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
                       Let issues choose between the project's primary checkout and an isolated execution workspace.
+                      </div>
                     </div>
-                  </div>
                   {onUpdate || onFieldUpdate ? (
                     <button
                       data-slot="toggle"

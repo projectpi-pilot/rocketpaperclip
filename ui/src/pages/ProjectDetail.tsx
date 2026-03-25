@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { useParams, useNavigate, useLocation, Navigate } from "@/lib/router";
+import { useParams, useNavigate, useLocation, Navigate, Link } from "@/lib/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PROJECT_COLORS, isUuidLike, type BudgetPolicySummary } from "@paperclipai/shared";
 import { budgetsApi } from "../api/budgets";
-import { projectsApi } from "../api/projects";
+import { projectsApi, type LocalPreviewDiscovery } from "../api/projects";
 import { issuesApi } from "../api/issues";
 import { agentsApi } from "../api/agents";
+import { goalsApi } from "../api/goals";
 import { heartbeatsApi } from "../api/heartbeats";
 import { assetsApi } from "../api/assets";
 import { usePanel } from "../context/PanelContext";
@@ -20,10 +21,14 @@ import { BudgetPolicyCard } from "../components/BudgetPolicyCard";
 import { IssuesList } from "../components/IssuesList";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { PageTabBar } from "../components/PageTabBar";
-import { projectRouteRef, cn } from "../lib/utils";
+import { projectRouteRef, issueUrl, cn, formatDate } from "../lib/utils";
 import { Tabs } from "@/components/ui/tabs";
 import { PluginLauncherOutlet } from "@/plugins/launchers";
 import { PluginSlotMount, PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Activity, ExternalLink, FolderOpen, Github, ListTodo, LoaderCircle, PlaySquare, Square, Users } from "lucide-react";
 
 /* ── Top-level tab types ── */
 
@@ -51,13 +56,274 @@ function resolveProjectTab(pathname: string, projectId: string): ProjectTab | nu
 
 function OverviewContent({
   project,
+  companyId,
   onUpdate,
   imageUploadHandler,
 }: {
-  project: { description: string | null; status: string; targetDate: string | null };
+  project: {
+    id: string;
+    name: string;
+    goalIds: string[];
+    goals: Array<{ id: string; title: string }>;
+    description: string | null;
+    status: string;
+    targetDate: string | null;
+    createdAt: string | Date;
+    codebase: {
+      repoUrl: string | null;
+      effectiveLocalFolder: string;
+    };
+    leadAgentId: string | null;
+    primaryWorkspace: {
+      runtimeServices?: Array<{
+        id: string;
+        serviceName: string;
+        url: string | null;
+        status: string;
+      }>;
+    } | null;
+  };
+  companyId: string;
   onUpdate: (data: Record<string, unknown>) => void;
   imageUploadHandler?: (file: File) => Promise<string>;
 }) {
+  const queryClient = useQueryClient();
+  const { pushToast } = useToast();
+  const autoPreviewAttemptedRef = useRef(false);
+  const localPreviewQueryKey = useMemo(
+    () => [...queryKeys.projects.detail(project.id), companyId, "local-preview"],
+    [companyId, project.id],
+  );
+  const { data: agents = [] } = useQuery({
+    queryKey: queryKeys.agents.list(companyId),
+    queryFn: () => agentsApi.list(companyId),
+    enabled: !!companyId,
+  });
+  const { data: issues = [] } = useQuery({
+    queryKey: queryKeys.issues.listByProject(companyId, project.id),
+    queryFn: () => issuesApi.list(companyId, { projectId: project.id }),
+    enabled: !!companyId,
+    refetchInterval: 5000,
+  });
+  const { data: liveRuns = [] } = useQuery({
+    queryKey: queryKeys.liveRuns(companyId),
+    queryFn: () => heartbeatsApi.liveRunsForCompany(companyId),
+    enabled: !!companyId,
+    refetchInterval: 5000,
+  });
+  const { data: localPreview } = useQuery({
+    queryKey: localPreviewQueryKey,
+    queryFn: () => projectsApi.localPreview(project.id, companyId),
+    enabled: !!companyId,
+    refetchInterval: 5000,
+  });
+  const { data: allGoals = [] } = useQuery({
+    queryKey: queryKeys.goals.list(companyId),
+    queryFn: () => goalsApi.list(companyId),
+    enabled: !!companyId,
+    refetchInterval: 5000,
+  });
+  const startPreviewMutation = useMutation({
+    mutationFn: ({ announce = true }: { announce?: boolean } = {}) =>
+      projectsApi.startLocalPreview(project.id, companyId).then((result) => ({ result, announce })),
+    onSuccess: ({ result, announce }) => {
+      queryClient.setQueryData(localPreviewQueryKey, result);
+      queryClient.invalidateQueries({ queryKey: localPreviewQueryKey });
+      if (announce) {
+        pushToast({
+          title: result.surfaces.length > 0 ? "Local preview is live." : "Starting local preview…",
+          tone: "success",
+        });
+      }
+    },
+    onError: (error, variables) => {
+      if (variables?.announce !== false) {
+        pushToast({
+          title: error instanceof Error ? error.message : "Failed to start the local preview.",
+          tone: "error",
+        });
+      }
+    },
+  });
+  const stopPreviewMutation = useMutation({
+    mutationFn: () => projectsApi.stopLocalPreview(project.id, companyId),
+    onMutate: () => {
+      autoPreviewAttemptedRef.current = true;
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData(localPreviewQueryKey, result);
+      queryClient.invalidateQueries({ queryKey: localPreviewQueryKey });
+      pushToast({
+        title: "Local preview stopped.",
+        tone: "success",
+      });
+    },
+    onError: (error) => {
+      pushToast({
+        title: error instanceof Error ? error.message : "Failed to stop the local preview.",
+        tone: "error",
+      });
+    },
+  });
+
+  const issueIdSet = useMemo(() => new Set(issues.map((issue) => issue.id)), [issues]);
+  const projectLiveRuns = useMemo(
+    () => liveRuns.filter((run) => run.issueId && issueIdSet.has(run.issueId)),
+    [issueIdSet, liveRuns],
+  );
+  const agentById = useMemo(() => new Map(agents.map((agent) => [agent.id, agent])), [agents]);
+  const involvedAgentIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (project.leadAgentId) ids.add(project.leadAgentId);
+    for (const issue of issues) {
+      if (issue.assigneeAgentId) ids.add(issue.assigneeAgentId);
+    }
+    for (const run of projectLiveRuns) {
+      if (run.agentId) ids.add(run.agentId);
+    }
+    return [...ids];
+  }, [issues, project.leadAgentId, projectLiveRuns]);
+  const activeAgents = useMemo(
+    () => involvedAgentIds.map((agentId) => agentById.get(agentId)).filter(Boolean),
+    [agentById, involvedAgentIds],
+  );
+  const previewSurfaces = useMemo(() => {
+    const seen = new Set<string>();
+    const entries: Array<{
+      id: string;
+      title: string;
+      url: string | null;
+      type: "preview" | "repo" | "workspace" | "local";
+      meta: string;
+    }> = [];
+
+    for (const surface of localPreview?.surfaces ?? []) {
+      if (!surface.url || seen.has(surface.url)) continue;
+      entries.push({
+        id: `local:${surface.id}`,
+        title: surface.title,
+        url: surface.url,
+        type: "local",
+        meta: surface.meta,
+      });
+      seen.add(surface.url);
+    }
+
+    if (project.codebase.repoUrl) {
+      entries.push({
+        id: `repo:${project.codebase.repoUrl}`,
+        title: "Source repository",
+        url: project.codebase.repoUrl,
+        type: "repo",
+        meta: "GitHub source of truth",
+      });
+      seen.add(project.codebase.repoUrl);
+    }
+
+    for (const service of project.primaryWorkspace?.runtimeServices ?? []) {
+      if (service.url && !seen.has(service.url)) {
+        entries.push({
+          id: `runtime:${service.id}`,
+          title: service.serviceName,
+          url: service.url,
+          type: "preview",
+          meta: `Runtime service · ${service.status}`,
+        });
+        seen.add(service.url);
+      }
+    }
+
+    for (const issue of issues) {
+      for (const product of issue.workProducts ?? []) {
+        if (!product.url || seen.has(product.url)) continue;
+        if (product.type !== "preview_url" && product.type !== "runtime_service") continue;
+        entries.push({
+          id: `work-product:${product.id}`,
+          title: product.title,
+          url: product.url,
+          type: "preview",
+          meta: `${product.provider} · ${product.status}`,
+        });
+        seen.add(product.url);
+      }
+    }
+
+    entries.push({
+      id: "workspace",
+      title: "Workspace folder",
+      url: null,
+      type: "workspace",
+      meta: project.codebase.effectiveLocalFolder,
+    });
+
+    return entries;
+  }, [
+    issues,
+    localPreview?.surfaces,
+    project.codebase.effectiveLocalFolder,
+    project.codebase.repoUrl,
+    project.primaryWorkspace?.runtimeServices,
+  ]);
+
+  const primaryPreview =
+    previewSurfaces.find((surface) => (surface.type === "local" || surface.type === "preview") && surface.url) ?? null;
+  const blockedCount = issues.filter((issue) => issue.status === "blocked").length;
+  const doneCount = issues.filter((issue) => issue.status === "done").length;
+  const activeTaskCount = issues.filter((issue) =>
+    ["todo", "in_progress", "in_review", "blocked", "backlog"].includes(issue.status),
+  ).length;
+  const recentIssues = [...issues]
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 6);
+  const localPreviewHints = useMemo(() => {
+    const discovery = localPreview as LocalPreviewDiscovery | undefined;
+    if (!discovery) return [];
+
+    const hints: string[] = [];
+    if (discovery.framework) {
+      hints.push(`Detected ${discovery.framework} workspace`);
+    }
+    if (discovery.suggestedStartCommand) {
+      hints.push(`Start locally with: ${discovery.suggestedStartCommand}`);
+    }
+    return [...hints, ...(discovery.notes ?? [])];
+  }, [localPreview]);
+  const managedPreview = localPreview?.managedProcess ?? null;
+  const linkedGoalIds = project.goalIds.length > 0
+    ? project.goalIds
+    : project.goals.map((goal) => goal.id);
+  const successTracks = linkedGoalIds
+    .map((goalId) => allGoals.find((goal) => goal.id === goalId))
+    .filter(
+      (
+        goal
+      ): goal is (typeof allGoals)[number] => Boolean(goal)
+    );
+  const previewStartAvailable = Boolean(localPreview?.workspacePath && localPreview?.framework);
+  const previewIsStarting = startPreviewMutation.isPending || managedPreview?.status === "starting";
+  const previewIsRunning = Boolean(primaryPreview?.url) || managedPreview?.status === "running";
+  const previewBusy = startPreviewMutation.isPending || stopPreviewMutation.isPending;
+
+  useEffect(() => {
+    autoPreviewAttemptedRef.current = false;
+  }, [companyId, project.id]);
+
+  useEffect(() => {
+    if (!previewStartAvailable) return;
+    if (previewIsRunning || previewIsStarting) return;
+    if (previewBusy) return;
+    if (autoPreviewAttemptedRef.current) return;
+
+    autoPreviewAttemptedRef.current = true;
+    startPreviewMutation.mutate({ announce: false });
+  }, [
+    previewStartAvailable,
+    previewIsRunning,
+    previewIsStarting,
+    previewBusy,
+    startPreviewMutation,
+  ]);
+
   return (
     <div className="space-y-6">
       <InlineEditor
@@ -70,20 +336,332 @@ function OverviewContent({
         imageUploadHandler={imageUploadHandler}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-muted-foreground">Status</span>
-          <div className="mt-1">
-            <StatusBadge status={project.status} />
-          </div>
-        </div>
-        {project.targetDate && (
-          <div>
-            <span className="text-muted-foreground">Target Date</span>
-            <p>{project.targetDate}</p>
-          </div>
-        )}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: "Status", value: <StatusBadge status={project.status} />, icon: Activity, hint: project.targetDate ? `Target ${formatDate(project.targetDate)}` : undefined },
+          { label: "Tasks", value: String(issues.length), icon: ListTodo, hint: `${activeTaskCount} active · ${doneCount} done` },
+          { label: "Agents", value: String(activeAgents.length), icon: Users, hint: `${projectLiveRuns.length} live runs` },
+          {
+            label: "Preview surfaces",
+            value: String(previewSurfaces.filter((surface) => surface.url).length),
+            icon: PlaySquare,
+            hint: `Started ${formatDate(project.createdAt)}`,
+          },
+        ].map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Card key={metric.label} className="gap-3 rounded-2xl py-4">
+              <CardContent className="flex items-start justify-between px-4">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{metric.label}</div>
+                  <div className="mt-2 text-2xl font-semibold">{metric.value}</div>
+                  {metric.hint ? <div className="mt-1 text-xs text-muted-foreground">{metric.hint}</div> : null}
+                </div>
+                <div className="rounded-xl border border-border p-2">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <Card className="gap-0 overflow-hidden rounded-2xl">
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Preview</CardTitle>
+            <CardDescription>
+              Visual surfaces detected from runtime services, preview URLs, and the primary codebase.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-5">
+            <div className="flex flex-wrap items-center gap-2">
+              {previewStartAvailable ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => startPreviewMutation.mutate({ announce: true })}
+                  disabled={previewBusy || previewIsStarting}
+                >
+                  {previewIsStarting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <PlaySquare className="h-4 w-4" />}
+                  {previewIsStarting ? "Starting preview" : "Start preview"}
+                </Button>
+              ) : null}
+              {managedPreview ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => stopPreviewMutation.mutate()}
+                  disabled={previewBusy || managedPreview.status === "stopped"}
+                >
+                  <Square className="h-4 w-4" />
+                  Stop preview
+                </Button>
+              ) : null}
+              {primaryPreview?.url ? (
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <a href={primaryPreview.url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    Open live
+                  </a>
+                </Button>
+              ) : null}
+              {managedPreview ? (
+                <Badge variant="secondary" className="capitalize">
+                  preview {managedPreview.status}
+                </Badge>
+              ) : null}
+            </div>
+
+            {primaryPreview?.url ? (
+              <div className="overflow-hidden rounded-xl border border-border bg-white">
+                <iframe
+                  title={`${primaryPreview.title} preview`}
+                  src={primaryPreview.url}
+                  className="h-[360px] w-full"
+                  loading="lazy"
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+                <div>No live preview URL yet.</div>
+                <div className="mt-2">
+                  {previewIsStarting
+                    ? "MSX is spinning up the local preview now. This panel will refresh into the app automatically."
+                    : "MSX will automatically spin up runtime services or a local web preview for previewable apps and show them here."}
+                </div>
+                {localPreviewHints.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {localPreviewHints.map((hint) => (
+                      <div key={hint} className="rounded-md border border-border/70 bg-card/60 px-3 py-2 text-xs">
+                        {hint}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {localPreview && (localPreview.framework || localPreview.workspacePath) ? (
+              <div className="rounded-xl border border-border bg-card/60 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-sm font-medium">Local app detection</div>
+                  {localPreview.framework ? <Badge variant="secondary">{localPreview.framework}</Badge> : null}
+                  {localPreview.packageManager ? <Badge variant="secondary">{localPreview.packageManager}</Badge> : null}
+                </div>
+                {localPreview.workspacePath ? (
+                  <div className="mt-3 text-xs text-muted-foreground break-all font-mono">
+                    {localPreview.workspacePath}
+                  </div>
+                ) : null}
+                {managedPreview?.command ? (
+                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs font-mono">
+                    {managedPreview.command}
+                  </div>
+                ) : localPreview.suggestedStartCommand ? (
+                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs font-mono">
+                    {localPreview.suggestedStartCommand}
+                  </div>
+                ) : null}
+                {managedPreview?.logPath ? (
+                  <div className="mt-3 text-xs text-muted-foreground break-all font-mono">
+                    log: {managedPreview.logPath}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="rounded-xl border border-border bg-card/60 p-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  Design automation
+                </div>
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  MSX routes landing pages and digital product UI through the installed
+                  <span className="mx-1 font-mono text-foreground">/superdesign</span>
+                  skill by default. Agents should initialize, iterate against the live preview,
+                  and ship a polished surface without operator copy-paste.
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Workflow
+                  </div>
+                  <div className="mt-2 text-sm font-medium">
+                    Superdesign is the default design pass
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Landing pages should go through the skill automatically before being called shipped.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Preview target
+                  </div>
+                  <div className="mt-2 text-sm font-medium">
+                    {primaryPreview?.url ? "Live preview detected" : "Waiting on local preview"}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {primaryPreview?.url
+                      ? "Agents should design against the shipped surface that is already running."
+                      : "Once the preview is up, agents should use that live surface as the design reference."}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Enforcement
+                  </div>
+                  <div className="mt-2 text-sm font-medium">
+                    Required before polished ship
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    MSX should treat rough UI as unfinished and keep routing design refinement automatically.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {previewSurfaces.map((surface) => (
+                <div key={surface.id} className="rounded-xl border border-border bg-card/60 p-4">
+                  <div className="text-sm font-medium">{surface.title}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{surface.meta}</div>
+                  {surface.url ? (
+                    <a
+                      href={surface.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm text-foreground underline underline-offset-4"
+                    >
+                      Open
+                      {surface.type === "repo" ? <Github className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    </a>
+                  ) : (
+                    <div className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      <span className="break-all font-mono">{surface.meta}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-0 rounded-2xl">
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Agents working here</CardTitle>
+            <CardDescription>
+              Lead ownership, assignees, and live activity touching this project.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-5">
+            {activeAgents.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+                No agents are linked yet. Assign tasks or set a lead agent to populate this lane.
+              </div>
+            ) : (
+              activeAgents.map((agent) => {
+                if (!agent) return null;
+                const liveCount = projectLiveRuns.filter((run) => run.agentId === agent.id).length;
+                return (
+                  <div key={agent.id} className="rounded-xl border border-border bg-card/60 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">@{agent.name}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{agent.title ?? agent.role}</div>
+                      </div>
+                      <Badge variant="secondary" className="capitalize">
+                        {liveCount > 0 ? `${liveCount} live` : agent.status}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+            <div className="space-y-3 border-t border-border pt-4">
+              <div>
+                <div className="text-sm font-medium">Success tracks</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Separate the core product build from launch, virality, and revenue work.
+                </div>
+              </div>
+              {successTracks.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+                  No success tracks linked yet. Attach goals to this project to make build, marketing,
+                  virality, and revenue lanes explicit.
+                </div>
+              ) : (
+                successTracks.map((goal) => (
+                  <div key={goal.id} className="rounded-xl border border-border bg-card/60 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link to={`/goals/${goal.id}`} className="font-medium hover:underline">
+                          {goal.title}
+                        </Link>
+                        {goal.description ? (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {goal.description}
+                          </div>
+                        ) : null}
+                      </div>
+                      <StatusBadge status={goal.status} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="gap-0 rounded-2xl">
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Tasks and metrics</CardTitle>
+          <CardDescription>
+            Track the build queue, blockers, and recent work moving through this project.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-5">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Badge variant="secondary">{activeTaskCount} active</Badge>
+            <Badge variant="secondary">{blockedCount} blocked</Badge>
+            <Badge variant="secondary">{doneCount} done</Badge>
+          </div>
+
+          {recentIssues.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border px-4 py-10 text-sm text-muted-foreground">
+              No tasks yet. When the orchestrator or a specialist creates issues for this project, they will show here.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentIssues.map((issue) => (
+                <div key={issue.id} className="rounded-xl border border-border bg-card/60 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <Link to={issueUrl(issue)} className="font-medium hover:underline">
+                        {issue.title}
+                      </Link>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Updated {formatDate(issue.updatedAt)}
+                        {issue.assigneeAgentId && agentById.get(issue.assigneeAgentId)
+                          ? ` · @${agentById.get(issue.assigneeAgentId)?.name}`
+                          : ""}
+                      </div>
+                    </div>
+                    <StatusBadge status={issue.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -297,7 +875,7 @@ export function ProjectDetail() {
       }
     },
     onError: (_, archived) => {
-      pushToast({
+        pushToast({
         title: archived ? "Failed to archive project" : "Failed to unarchive project",
         tone: "error",
       });
@@ -577,6 +1155,7 @@ export function ProjectDetail() {
       {activeTab === "overview" && (
         <OverviewContent
           project={project}
+          companyId={resolvedCompanyId!}
           onUpdate={(data) => updateProject.mutate(data)}
           imageUploadHandler={async (file) => {
             const asset = await uploadImage.mutateAsync(file);

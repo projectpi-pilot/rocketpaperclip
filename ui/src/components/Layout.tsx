@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Moon, Settings, Sun } from "lucide-react";
+import { BookOpen, Moon, Sun } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate, useParams } from "@/lib/router";
 import { CompanyRail } from "./CompanyRail";
 import { Sidebar } from "./Sidebar";
@@ -25,26 +25,10 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useCompanyPageMemory } from "../hooks/useCompanyPageMemory";
 import { healthApi } from "../api/health";
 import { shouldSyncCompanySelectionFromRoute } from "../lib/company-selection";
-import {
-  DEFAULT_INSTANCE_SETTINGS_PATH,
-  normalizeRememberedInstanceSettingsPath,
-} from "../lib/instance-settings";
 import { queryKeys } from "../lib/queryKeys";
 import { cn } from "../lib/utils";
-import { NotFoundPage } from "../pages/NotFound";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-
-const INSTANCE_SETTINGS_MEMORY_KEY = "paperclip.lastInstanceSettingsPath";
-
-function readRememberedInstanceSettingsPath(): string {
-  if (typeof window === "undefined") return DEFAULT_INSTANCE_SETTINGS_PATH;
-  try {
-    return normalizeRememberedInstanceSettingsPath(window.localStorage.getItem(INSTANCE_SETTINGS_MEMORY_KEY));
-  } catch {
-    return DEFAULT_INSTANCE_SETTINGS_PATH;
-  }
-}
 
 export function Layout() {
   const { sidebarOpen, setSidebarOpen, toggleSidebar, isMobile } = useSidebar();
@@ -66,7 +50,6 @@ export function Layout() {
   const onboardingTriggered = useRef(false);
   const lastMainScrollTop = useRef(0);
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
-  const [instanceSettingsTarget, setInstanceSettingsTarget] = useState<string>(() => readRememberedInstanceSettingsPath());
   const nextTheme = theme === "dark" ? "light" : "dark";
   const matchedCompany = useMemo(() => {
     if (!companyPrefix) return null;
@@ -102,15 +85,20 @@ export function Layout() {
       const fallback = (selectedCompanyId ? companies.find((company) => company.id === selectedCompanyId) : null)
         ?? companies[0]
         ?? null;
-      if (fallback && selectedCompanyId !== fallback.id) {
-        setSelectedCompanyId(fallback.id, { source: "route_sync" });
+      if (fallback) {
+        if (selectedCompanyId !== fallback.id) {
+          setSelectedCompanyId(fallback.id, { source: "route_sync" });
+        }
+
+        const suffix = location.pathname.replace(/^\/[^/]+/, "");
+        navigate(`/${fallback.issuePrefix}${suffix}${location.search}${location.hash}`, { replace: true });
       }
       return;
     }
 
     if (companyPrefix !== matchedCompany.issuePrefix) {
       const suffix = location.pathname.replace(/^\/[^/]+/, "");
-      navigate(`/${matchedCompany.issuePrefix}${suffix}${location.search}`, { replace: true });
+      navigate(`/${matchedCompany.issuePrefix}${suffix}${location.search}${location.hash}`, { replace: true });
       return;
     }
 
@@ -243,21 +231,6 @@ export function Layout() {
     };
   }, [isMobile]);
 
-  useEffect(() => {
-    if (!location.pathname.startsWith("/instance/settings/")) return;
-
-    const nextPath = normalizeRememberedInstanceSettingsPath(
-      `${location.pathname}${location.search}${location.hash}`,
-    );
-    setInstanceSettingsTarget(nextPath);
-
-    try {
-      window.localStorage.setItem(INSTANCE_SETTINGS_MEMORY_KEY, nextPath);
-    } catch {
-      // Ignore storage failures in restricted environments.
-    }
-  }, [location.hash, location.pathname, location.search]);
-
   return (
     <div
       className={cn(
@@ -297,13 +270,13 @@ export function Layout() {
             <div className="border-t border-r border-border px-3 py-2 bg-background">
               <div className="flex items-center gap-1">
                 <a
-                  href="https://docs.paperclip.ing/"
+                  href="https://github.com/longevusmarcus/mothership-glow"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
                 >
                   <BookOpen className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Documentation</span>
+                  <span className="truncate">MSX Docs</span>
                 </a>
                 {health?.version && (
                   <Tooltip>
@@ -313,18 +286,6 @@ export function Layout() {
                     <TooltipContent>v{health.version}</TooltipContent>
                   </Tooltip>
                 )}
-                <Button variant="ghost" size="icon-sm" className="text-muted-foreground shrink-0" asChild>
-                  <Link
-                    to={instanceSettingsTarget}
-                    aria-label="Instance settings"
-                    title="Instance settings"
-                    onClick={() => {
-                      if (isMobile) setSidebarOpen(false);
-                    }}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Link>
-                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -355,13 +316,13 @@ export function Layout() {
             <div className="border-t border-r border-border px-3 py-2">
               <div className="flex items-center gap-1">
                 <a
-                  href="https://docs.paperclip.ing/"
+                  href="https://github.com/longevusmarcus/mothership-glow"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
                 >
                   <BookOpen className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Documentation</span>
+                  <span className="truncate">MSX Docs</span>
                 </a>
                 {health?.version && (
                   <Tooltip>
@@ -371,18 +332,6 @@ export function Layout() {
                     <TooltipContent>v{health.version}</TooltipContent>
                   </Tooltip>
                 )}
-                <Button variant="ghost" size="icon-sm" className="text-muted-foreground shrink-0" asChild>
-                  <Link
-                    to={instanceSettingsTarget}
-                    aria-label="Instance settings"
-                    title="Instance settings"
-                    onClick={() => {
-                      if (isMobile) setSidebarOpen(false);
-                    }}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Link>
-                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -417,10 +366,9 @@ export function Layout() {
               )}
             >
               {hasUnknownCompanyPrefix ? (
-                <NotFoundPage
-                  scope="invalid_company_prefix"
-                  requestedPrefix={companyPrefix ?? selectedCompany?.issuePrefix}
-                />
+                <div className="mx-auto max-w-2xl py-10 text-sm text-muted-foreground">
+                  Redirecting to the active workspace...
+                </div>
               ) : (
                 <Outlet />
               )}

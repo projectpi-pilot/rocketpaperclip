@@ -1,5 +1,5 @@
 {
-  "name": "paperclip",
+  "name": "msx",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,6 +16,7 @@
     "db:migrate": "pnpm --filter @paperclipai/db migrate",
     "secrets:migrate-inline-env": "tsx scripts/migrate-inline-env-secrets.ts",
     "db:backup": "./scripts/backup-db.sh",
+    "msx": "node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts",
     "paperclipai": "node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts",
     "build:npm": "./scripts/build-npm.sh",
     "release": "./scripts/release.sh",
@@ -23,6 +24,7 @@
     "release:stable": "./scripts/release.sh stable",
     "release:github": "./scripts/create-github-release.sh",
     "release:rollback": "./scripts/rollback-latest.sh",
+    "sync:openclaw-fleet": "node scripts/sync-openclaw-fleet.mjs",
     "check:tokens": "node scripts/check-forbidden-tokens.mjs",
     "docs:dev": "cd docs && npx mintlify dev",
     "smoke:openclaw-join": "./scripts/smoke/openclaw-join.sh",

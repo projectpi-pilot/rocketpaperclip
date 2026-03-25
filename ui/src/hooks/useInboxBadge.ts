@@ -9,7 +9,9 @@ import { issuesApi } from "../api/issues";
 import { queryKeys } from "../lib/queryKeys";
 import {
   computeInboxBadgeData,
+  DISMISSED_KEY,
   getRecentTouchedIssues,
+  INBOX_DISMISSED_UPDATED_EVENT,
   loadDismissedInboxItems,
   saveDismissedInboxItems,
   getUnreadTouchedIssues,
@@ -21,12 +23,22 @@ export function useDismissedInboxItems() {
   const [dismissed, setDismissed] = useState<Set<string>>(loadDismissedInboxItems);
 
   useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== "paperclip:inbox:dismissed") return;
+    const syncDismissed = () => {
       setDismissed(loadDismissedInboxItems());
     };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== DISMISSED_KEY) return;
+      syncDismissed();
+    };
+
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(INBOX_DISMISSED_UPDATED_EVENT, syncDismissed);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(INBOX_DISMISSED_UPDATED_EVENT, syncDismissed);
+    };
   }, []);
 
   const dismiss = (id: string) => {

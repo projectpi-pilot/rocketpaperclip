@@ -122,7 +122,7 @@ describe("issue goal context routes", () => {
       goalId: projectGoal.id,
       goalIds: [projectGoal.id],
       goals: [{ id: projectGoal.id, title: projectGoal.title }],
-      name: "Onboarding",
+      name: "Activation Lane",
       description: null,
       status: "in_progress",
       leadAgentId: null,

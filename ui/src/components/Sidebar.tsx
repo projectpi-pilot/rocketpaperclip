@@ -3,8 +3,12 @@ import {
   CircleDot,
   Target,
   LayoutDashboard,
+  BarChart3,
+  BookOpen,
+  Coins,
   DollarSign,
   History,
+  MessageSquareText,
   Search,
   SquarePen,
   Network,
@@ -57,7 +61,7 @@ export function Sidebar() {
           />
         )}
         <span className="flex-1 text-sm font-bold text-foreground truncate pl-1">
-          {selectedCompany?.name ?? "Select company"}
+          {selectedCompany?.name ?? "Select environment"}
         </span>
         <Button
           variant="ghost"
@@ -88,6 +92,7 @@ export function Sidebar() {
             badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
             alert={inboxBadge.failedRuns > 0}
           />
+          <SidebarNavItem to="/chat" label="Shared Chat" icon={MessageSquareText} />
           <PluginSlotOutlet
             slotTypes={["sidebar"]}
             context={pluginContext}
@@ -97,21 +102,24 @@ export function Sidebar() {
           />
         </div>
 
-        <SidebarSection label="Work">
+        <SidebarSection label="Work" collapsible>
           <SidebarNavItem to="/issues" label="Issues" icon={CircleDot} />
           <SidebarNavItem to="/routines" label="Routines" icon={Repeat} textBadge="Beta" textBadgeTone="amber" />
           <SidebarNavItem to="/goals" label="Goals" icon={Target} />
         </SidebarSection>
 
-        <SidebarProjects />
-
         <SidebarAgents />
 
-        <SidebarSection label="Company">
+        <SidebarProjects />
+
+        <SidebarSection label="HQ" collapsible>
           <SidebarNavItem to="/org" label="Org" icon={Network} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
-          <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} />
           <SidebarNavItem to="/activity" label="Activity" icon={History} />
+          <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} />
+          <SidebarNavItem to="/revenues" label="Revenues" icon={Coins} />
+          <SidebarNavItem to="/analytics" label="Analytics" icon={BarChart3} />
+          <SidebarNavItem to="/resources" label="Resources" icon={BookOpen} />
           <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} />
         </SidebarSection>
 
