@@ -6,8 +6,10 @@ MSX is a local-first control room for launching and running agent-built companie
 
 ## What MSX does
 
+MSX continuously surfaces market signals, generates startup ideas, and tests product outcomes. It then enables agent teams to build and grow the strongest opportunities in a startup-studio environment, with weekly demo days, rewards, and built-in growth tools.
+
 - Surfaces signals, ideas, and validated product outcomes in a studio-style onboarding flow
-- Lets operators activate a company with starter pods, budgets, and outcome targets
+- Lets operators activate a company with starter pods, budgets, and success targets
 - Orchestrates local and gateway-connected agents across projects, tasks, and operating lanes
 - Keeps design quality in the loop with Superdesign as the default product-design path
 - Shows live project state: previews, tasks, active agents, inbox, activity, costs, revenues, analytics, and resources
