@@ -122,6 +122,8 @@ type StarterTeamTemplate = {
   founderBrief: string;
 };
 
+type StudioAccordionSection = "queue" | "brief" | "simulation";
+
 const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
   {
     id: "elder-memory-mobile",
@@ -607,6 +609,7 @@ export function OnboardingWizard() {
   const [error, setError] = useState<string | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const formScrollRef = useRef<HTMLDivElement | null>(null);
   const studioDeckTouchStartXRef = useRef<number | null>(null);
 
   // Step 1
@@ -615,6 +618,9 @@ export function OnboardingWizard() {
   const [selectedFeedFilter, setSelectedFeedFilter] =
     useState<StudioFeedFilter>("all");
   const [swarmFrame, setSwarmFrame] = useState(0);
+  const [openStudioSections, setOpenStudioSections] = useState<
+    StudioAccordionSection[]
+  >(["queue", "brief", "simulation"]);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState(
     DEFAULT_STUDIO_OPPORTUNITY.id
   );
@@ -742,16 +748,6 @@ export function OnboardingWizard() {
       ),
     [filteredStudioOpportunities, selectedOpportunity.id]
   );
-  const queuedOpportunityCards = useMemo(() => {
-    if (filteredStudioOpportunities.length <= 1) return [];
-    return Array.from({
-      length: Math.min(3, filteredStudioOpportunities.length - 1),
-    }).map((_, index) => {
-      return filteredStudioOpportunities[
-        (selectedOpportunityIndex + index + 1) % filteredStudioOpportunities.length
-      ]!;
-    });
-  }, [filteredStudioOpportunities, selectedOpportunityIndex]);
   const visibleSwarmUpdates = useMemo(() => {
     const updates = selectedOpportunity.swarmUpdates;
     if (updates.length === 0) return [];
@@ -798,6 +794,13 @@ export function OnboardingWizard() {
     },
     []
   );
+  const toggleStudioSection = useCallback((section: StudioAccordionSection) => {
+    setOpenStudioSections((current) =>
+      current.includes(section)
+        ? current.filter((entry) => entry !== section)
+        : [...current, section]
+    );
+  }, []);
 
   const cycleStudioOpportunity = useCallback(
     (direction: -1 | 1) => {
@@ -966,6 +969,11 @@ export function OnboardingWizard() {
   useEffect(() => {
     if (step === 3) autoResizeTextarea();
   }, [step, taskDescription, autoResizeTextarea]);
+
+  useEffect(() => {
+    if (!effectiveOnboardingOpen) return;
+    formScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [effectiveOnboardingOpen, step]);
 
   const {
     data: adapterModels,
@@ -1442,6 +1450,7 @@ export function OnboardingWizard() {
 
           {/* Left half — form */}
           <div
+            ref={formScrollRef}
             className={cn(
               "w-full flex flex-col overflow-y-auto transition-[width] duration-500 ease-in-out",
               "md:w-1/2"
@@ -1556,8 +1565,80 @@ export function OnboardingWizard() {
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] border border-border bg-gradient-to-br from-background via-background to-accent/40 p-5 shadow-sm">
-                    <div className="flex items-start justify-between gap-4">
+                  <div className="rounded-2xl border border-border bg-card/60">
+                    <button
+                      type="button"
+                      onClick={() => toggleStudioSection("queue")}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+                    >
+                      <div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          Studio queue
+                        </div>
+                        <h4 className="mt-1 text-base font-medium">
+                          Select the product, idea, or signal to activate now
+                        </h4>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Pick one direction explicitly. The rest stay in the queue for later review.
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                          openStudioSections.includes("queue") && "rotate-180"
+                        )}
+                      />
+                    </button>
+                    {openStudioSections.includes("queue") && (
+                      <div className="grid gap-2 border-t border-border px-4 py-4 sm:grid-cols-2">
+                        {filteredStudioOpportunities.map((opportunity) => {
+                          const isSelected = opportunity.id === selectedOpportunity.id;
+                          return (
+                            <button
+                              key={opportunity.id}
+                              type="button"
+                              onClick={() => applyStudioConfiguration(opportunity.id)}
+                              className={cn(
+                                "rounded-2xl border px-4 py-4 text-left transition-colors",
+                                isSelected
+                                  ? "border-foreground bg-accent/40"
+                                  : "border-border bg-background/70 hover:bg-accent/30"
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                                  {sourceLabel(opportunity.source)}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]",
+                                    isSelected
+                                      ? "bg-foreground text-background"
+                                      : "border border-border text-muted-foreground"
+                                  )}
+                                >
+                                  {isSelected ? "Selected" : "Select"}
+                                </span>
+                              </div>
+                              <div className="mt-3 text-sm font-medium">
+                                {opportunity.title}
+                              </div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {opportunity.tagline}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-[28px] border border-border bg-gradient-to-br from-background via-background to-accent/40 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => toggleStudioSection("brief")}
+                      className="flex w-full items-start justify-between gap-4 px-5 py-5 text-left"
+                    >
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -1567,7 +1648,7 @@ export function OnboardingWizard() {
                             {industryLabel(selectedOpportunity.industry)}
                           </span>
                           <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            {filteredStudioOpportunities.length} under review
+                            Selected now
                           </span>
                         </div>
                         <div>
@@ -1582,248 +1663,222 @@ export function OnboardingWizard() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => cycleStudioOpportunity(-1)}
-                          className="rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/60"
-                          aria-label="Previous opportunity"
-                        >
-                          <ArrowLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => cycleStudioOpportunity(1)}
-                          className="rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/60"
-                          aria-label="Next opportunity"
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                      <ChevronDown
+                        className={cn(
+                          "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                          openStudioSections.includes("brief") && "rotate-180"
+                        )}
+                      />
+                    </button>
 
-                    <div
-                      className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_220px]"
-                      onTouchStart={handleStudioDeckTouchStart}
-                      onTouchEnd={handleStudioDeckTouchEnd}
-                    >
-                      <div className="space-y-4">
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          {selectedOpportunity.summary}
-                        </p>
-                        <div className="rounded-2xl border border-border bg-background/80 p-4">
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            Signal cluster
-                          </div>
-                          <p className="mt-2 text-sm leading-6">
-                            {selectedOpportunity.signal}
-                          </p>
+                    {openStudioSections.includes("brief") && (
+                      <div
+                        className="border-t border-border px-5 py-5"
+                        onTouchStart={handleStudioDeckTouchStart}
+                        onTouchEnd={handleStudioDeckTouchEnd}
+                      >
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => cycleStudioOpportunity(-1)}
+                            className="rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/60"
+                            aria-label="Previous opportunity"
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cycleStudioOpportunity(1)}
+                            className="rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/60"
+                            aria-label="Next opportunity"
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </button>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          {selectedOpportunity.proofPoints.map((point) => (
+
+                        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_220px]">
+                          <div className="space-y-4">
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              {selectedOpportunity.summary}
+                            </p>
+                            <div className="rounded-2xl border border-border bg-background/80 p-4">
+                              <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Signal cluster
+                              </div>
+                              <p className="mt-2 text-sm leading-6">
+                                {selectedOpportunity.signal}
+                              </p>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              {selectedOpportunity.proofPoints.map((point) => (
+                                <div
+                                  key={point}
+                                  className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground"
+                                >
+                                  {point}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="rounded-2xl border border-border bg-background/80 p-4">
+                              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <TrendingUp className="h-3.5 w-3.5" />
+                                First activation
+                              </div>
+                              <p className="mt-2 text-sm font-medium">
+                                {selectedOpportunity.initialTaskTitle}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl border border-border bg-background/80 p-4">
+                              <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Studio thesis
+                              </div>
+                              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                MSX should preliminarily identify the problem, pressure-test the
+                                idea, simulate the likely product outcome, and map the first
+                                revenue path before a human founder or team is brought in.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2">
+                            {selectedOpportunity.metrics.map((metric) => (
+                              <div
+                                key={metric.label}
+                                className="rounded-2xl border border-border bg-background/80 px-4 py-4"
+                              >
+                                <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                  {metric.label}
+                                </div>
+                                <div className="mt-2 text-sm font-medium">
+                                  {metric.value}
+                                </div>
+                              </div>
+                            ))}
+                            <div className="rounded-2xl border border-border bg-background/80 px-4 py-4">
+                              <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Projected first revenue
+                              </div>
+                              <div className="mt-2 text-sm font-medium">
+                                {opportunityMetricValue(selectedOpportunity, "First revenue") ?? "To be modeled"}
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                                Treated as a preliminary studio forecast, not a promise. The goal
+                                is to know what to test before capital and people are committed.
+                              </p>
+                            </div>
+                            <div className="rounded-2xl border border-border bg-background/80 px-4 py-4">
+                              <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Human activation
+                              </div>
+                              <div className="mt-2 text-sm font-medium">
+                                Founder in residence + operator pod
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                                Once a direction looks credible, MSX can bring in the human lead,
+                                then spin up the agentic team, workspace, dashboard, funding lane,
+                                and acceleration support around them.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-card/60">
+                    <button
+                      type="button"
+                      onClick={() => toggleStudioSection("simulation")}
+                      className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left"
+                    >
+                      <div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          Studio simulation
+                        </div>
+                        <h4 className="mt-2 text-base font-medium">
+                          What MSX is already modeling
+                        </h4>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Open this to see the research, product, and revenue simulation
+                          around the selected studio direction.
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                          openStudioSections.includes("simulation") && "rotate-180"
+                        )}
+                      />
+                    </button>
+                    {openStudioSections.includes("simulation") && (
+                      <div className="border-t border-border px-4 py-4">
+                        <div className="space-y-2">
+                          {visibleSwarmUpdates.map((update, index) => (
                             <div
-                              key={point}
-                              className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground"
+                              key={`${update.agent}-${update.action}`}
+                              className="rounded-2xl border border-border bg-background/80 px-3 py-3"
                             >
-                              {point}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 text-sm font-medium">
+                                  <span
+                                    className={cn(
+                                      "h-2.5 w-2.5 rounded-full",
+                                      update.status === "live"
+                                        ? "bg-green-500 animate-pulse"
+                                        : update.status === "queued"
+                                        ? "bg-amber-500"
+                                        : "bg-sky-500"
+                                    )}
+                                  />
+                                  @{update.agent}
+                                </div>
+                                <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                                  {index === 0 ? "in progress" : update.eta}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                                {update.action}
+                              </p>
                             </div>
                           ))}
                         </div>
-                        <div className="rounded-2xl border border-border bg-background/80 p-4">
-                          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            <TrendingUp className="h-3.5 w-3.5" />
-                            First activation
+                        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                          <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                              Research lanes
+                            </div>
+                            <div className="mt-2 text-sm font-medium">04</div>
                           </div>
-                          <p className="mt-2 text-sm font-medium">
-                            {selectedOpportunity.initialTaskTitle}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl border border-border bg-background/80 p-4">
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            Studio thesis
-                          </div>
-                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                            MSX should preliminarily identify the problem, pressure-test the
-                            idea, simulate the likely product outcome, and map the first
-                            revenue path before a human founder or team is brought in.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-2">
-                        {selectedOpportunity.metrics.map((metric) => (
-                          <div
-                            key={metric.label}
-                            className="rounded-2xl border border-border bg-background/80 px-4 py-4"
-                          >
-                            <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                              {metric.label}
+                          <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                              Simulated outcome
                             </div>
                             <div className="mt-2 text-sm font-medium">
-                              {metric.value}
+                              Preliminary MVP fit
                             </div>
                           </div>
-                        ))}
-                        <div className="rounded-2xl border border-border bg-background/80 px-4 py-4">
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            Projected first revenue
-                          </div>
-                          <div className="mt-2 text-sm font-medium">
-                            {opportunityMetricValue(selectedOpportunity, "First revenue") ?? "To be modeled"}
-                          </div>
-                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                            Treated as a preliminary studio forecast, not a promise. The goal
-                            is to know what to test before capital and people are committed.
-                          </p>
-                        </div>
-                        <div className="rounded-2xl border border-border bg-background/80 px-4 py-4">
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            Human activation
-                          </div>
-                          <div className="mt-2 text-sm font-medium">
-                            Founder in residence + operator pod
-                          </div>
-                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                            Once a direction looks credible, MSX can bring in the human lead,
-                            then spin up the agentic team, workspace, dashboard, funding lane,
-                            and acceleration support around them.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        {filteredStudioOpportunities.map((opportunity, index) => (
-                          <button
-                            key={opportunity.id}
-                            type="button"
-                            onClick={() => applyStudioConfiguration(opportunity.id)}
-                            className={cn(
-                              "h-2.5 rounded-full transition-all",
-                              opportunity.id === selectedOpportunity.id
-                                ? "w-8 bg-foreground"
-                                : "w-2.5 bg-border hover:bg-foreground/40"
-                            )}
-                            aria-label={`Select opportunity ${index + 1}`}
-                          />
-                        ))}
-                      </div>
-                      <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                        Browse other studio directions
-                      </div>
-                    </div>
-                  </div>
-
-                  {queuedOpportunityCards.length > 0 && (
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {queuedOpportunityCards.map((opportunity) => (
-                        <button
-                          key={opportunity.id}
-                          type="button"
-                          onClick={() => applyStudioConfiguration(opportunity.id)}
-                          className="rounded-2xl border border-border bg-card/60 px-4 py-4 text-left transition-colors hover:bg-accent/35"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                              {sourceLabel(opportunity.source)}
-                            </span>
-                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                          </div>
-                          <div className="mt-3 text-sm font-medium">
-                            {opportunity.title}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {opportunity.tagline}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="rounded-2xl border border-border bg-card/60 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            Studio simulation
-                          </div>
-                          <h4 className="mt-2 text-base font-medium">
-                            What MSX is already modeling
-                          </h4>
-                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            This is a lightweight simulation of the studio engine:
-                            research, product shaping, and revenue modeling happen first;
-                            then humans, founders in residence, and agentic teams are
-                            activated around the strongest opportunities.
-                          </p>
-                        </div>
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        {visibleSwarmUpdates.map((update, index) => (
-                          <div
-                            key={`${update.agent}-${update.action}`}
-                            className="rounded-2xl border border-border bg-background/80 px-3 py-3"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 text-sm font-medium">
-                                <span
-                                  className={cn(
-                                    "h-2.5 w-2.5 rounded-full",
-                                    update.status === "live"
-                                      ? "bg-green-500 animate-pulse"
-                                      : update.status === "queued"
-                                      ? "bg-amber-500"
-                                      : "bg-sky-500"
-                                  )}
-                                />
-                                @{update.agent}
-                              </div>
-                              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                                {index === 0 ? "in progress" : update.eta}
-                              </span>
+                          <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                              Revenue model
                             </div>
-                            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                              {update.action}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                        <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
-                          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Research lanes
-                          </div>
-                          <div className="mt-2 text-sm font-medium">04</div>
-                        </div>
-                        <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
-                          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Simulated outcome
-                          </div>
-                          <div className="mt-2 text-sm font-medium">
-                            Preliminary MVP fit
+                            <div className="mt-2 text-sm font-medium">
+                              {opportunityMetricValue(selectedOpportunity, "First revenue") ?? "In review"}
+                            </div>
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
-                          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Revenue model
-                          </div>
-                          <div className="mt-2 text-sm font-medium">
-                            {opportunityMetricValue(selectedOpportunity, "First revenue") ?? "In review"}
-                          </div>
+                        <div className="mt-4 border-t border-border pt-4 space-y-2">
+                          {STUDIO_PRIVILEGES.map((privilege) => (
+                            <div
+                              key={privilege}
+                              className="flex items-start gap-2 text-sm"
+                            >
+                              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />
+                              <span>{privilege}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <div className="mt-4 border-t border-border pt-4 space-y-2">
-                        {STUDIO_PRIVILEGES.map((privilege) => (
-                          <div
-                            key={privilege}
-                            className="flex items-start gap-2 text-sm"
-                          >
-                            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />
-                            <span>{privilege}</span>
-                          </div>
-                        ))}
-                      </div>
+                    )}
                   </div>
 
                 </div>
