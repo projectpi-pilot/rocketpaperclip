@@ -1,45 +1,68 @@
 # MSX
 
-Startup studio for agents.
+MSX is an agent-native startup studio and control plane.
 
-MSX is a local-first control room for launching and running agent-built companies. It gives you a studio feed for opportunities, agent pods for activation, shared chat orchestration, project environments, live previews, budgets, resources, and operator visibility from one board.
+For developers and local operators, this repository gives you the local board, local project workspaces, local previews, and local/gateway agent execution. It does not grant access to the full MSX studio subscription layer.
 
-## What MSX does
+## What This Repo Is
 
-MSX continuously surfaces market signals, generates startup ideas, and tests product outcomes. It then enables agent teams to build and grow the strongest opportunities in a startup-studio environment, with weekly demo days, rewards, and built-in growth tools.
+This codebase is the local MSX application:
 
-- Surfaces signals, ideas, and validated product outcomes in a studio-style onboarding flow
-- Lets operators activate a company with starter pods, budgets, and success targets
-- Orchestrates local and gateway-connected agents across projects, tasks, and operating lanes
-- Keeps design quality in the loop with Superdesign as the default product-design path
-- Shows live project state: previews, tasks, active agents, inbox, activity, costs, revenues, analytics, and resources
-- Supports company portability, exports, and OpenClaw fleet imports
+- a board UI for running companies and projects locally
+- a control plane for agent tasks, approvals, budgets, and previews
+- a local-first runtime for OpenClaw and other supported agent adapters
+- a developer environment for building the MSX product itself
 
-## Product model
+It is useful for:
 
-MSX treats a company as a long-running operating environment.
+- contributors building MSX
+- operators running local experiments
+- humans directing local agent work in a private environment
+- teams connecting their own local OpenClaw fleet to the board
 
-- A company can contain multiple projects
-- One project may be the core product build
-- Other projects can cover launch, virality, revenue, support, or operations
-- Agents keep working beyond the first MVP until the company is organized, launched, and moving toward revenue
+## What This Repo Is Not
 
-## Core surfaces
+Running this repo locally does not include the licensed MSX studio network.
 
-- `Dashboard`: live operator overview with activity, costs, and revenues
-- `Shared Chat`: one room to direct agents and orchestrate multi-agent work with `@tags`
-- `Projects`: local environments where agents build and preview products
-- `HQ`: settings, resources, analytics, and operating controls
-- `Resources`: signals, ideas, live ecosystem, streaming, arena, docs, and design system
+The subscription layer covers things like:
 
-## Quickstart
+- proprietary signals and market intelligence feeds
+- curated idea pipelines and simulated product opportunities
+- MSX-managed products and studio company inventory
+- MSX-managed agentic teams and studio orchestration
+- studio resources, growth surfaces, and distribution support
+- financial incentive systems, acceleration paths, and studio-level monetization rails
 
-Requirements:
+In other words:
 
-- Node.js 20+
-- pnpm 9+
+- local repo: run your own board and your own agents
+- subscription MSX: access the full studio ecosystem
 
-Install and run:
+## Local Usage Model
+
+Local users should bring their own agents.
+
+Today that usually means:
+
+- install and configure your own OpenClaw agents locally
+- connect that fleet to your local MSX board
+- run companies, tasks, previews, and workspaces from your own machine
+
+The local product is for operating with your own fleet, not for automatically unlocking the full MSX studio catalog.
+
+## Developer And Human Guide
+
+### For developers
+
+Use this repo if you are building or modifying MSX itself.
+
+Typical workflow:
+
+1. clone the repo
+2. install dependencies
+3. onboard a local instance
+4. run the app locally
+5. connect your local agent runtime
 
 ```bash
 git clone <your-msx-repo-url>
@@ -49,21 +72,58 @@ pnpm msx onboard --yes
 pnpm dev
 ```
 
-This starts the MSX board at `http://localhost:3100`.
+This starts the local board at [http://localhost:3100](http://localhost:3100).
 
-## Recreate the OpenClaw fleet
+### For human operators
 
-The repo does not contain the actual `157` agents. MSX mirrors whatever OpenClaw fleet exists on the local machine.
+Use the local app to direct work, review outcomes, and run private agent operations.
 
-Once OpenClaw and the local fleet are present, run:
+What you can do locally:
 
-```bash
-pnpm bootstrap:openclaw-fleet
-```
+- create or import companies
+- run projects and issues
+- connect local or gateway agents
+- inspect activity, budgets, approvals, and previews
+- operate your own workspaces and your own execution lanes
 
-See [doc/FLEET_SETUP.md](./doc/FLEET_SETUP.md) for the full handoff and setup flow.
+What you should not assume from local-only access:
 
-## Useful commands
+- automatic access to MSX signals
+- automatic access to MSX ideas and product inventory
+- automatic access to MSX-managed growth and launch infrastructure
+- automatic access to MSX-managed agentic teams or studio orchestration
+
+## OpenClaw Fleet
+
+The repo does not ship the actual agent fleet.
+
+MSX mirrors whatever OpenClaw fleet exists on the machine or in the environment you connect to. If you want agents locally, you need to provide them locally.
+
+Once OpenClaw and your local fleet are present, use the relevant setup and sync flow from this repo.
+
+See:
+
+- [doc/FLEET_SETUP.md](/Users/borg/Documents/New%20project/msxstudionew/doc/FLEET_SETUP.md)
+- [doc/DEVELOPING.md](/Users/borg/Documents/New%20project/msxstudionew/doc/DEVELOPING.md)
+
+## Core Product Model
+
+MSX treats a company as a long-running operating environment.
+
+- a company can contain multiple projects
+- one project may be the core product build
+- other projects can cover launch, virality, revenue, support, or operations
+- agents can continue working after the first MVP instead of stopping at prototype stage
+
+## Core Surfaces
+
+- `Dashboard`: live operator overview with activity, costs, and revenues
+- `Shared Chat`: one room to direct agents and orchestrate work with `@tags`
+- `Projects`: local environments where agents build and preview products
+- `HQ`: settings, resources, analytics, and operating controls
+- `Resources`: local references and connected ecosystem links
+
+## Commands
 
 ```bash
 pnpm dev
@@ -74,42 +134,54 @@ pnpm typecheck
 pnpm test:run
 pnpm msx onboard --yes
 pnpm msx auth bootstrap-ceo
-pnpm bootstrap:openclaw-fleet
 pnpm msx company import <github-url-or-folder>
 pnpm msx company export <company-id>
 pnpm sync:openclaw-fleet
 ```
 
-## Design workflow
+If you have a local OpenClaw fleet bootstrap flow in your environment, use that too.
 
-Digital products in MSX should not stop at a raw prototype.
+## Verification
 
-- Ship the thinnest working MVP fast
-- Start the local preview immediately
-- Use Superdesign by default to push the shipped UI into a polished product surface
-- Keep launch, growth, and revenue work moving after the first ship
-
-## Local development
+For engineering handoff, the expected verification commands in this repo are:
 
 ```bash
-pnpm dev              # API + UI in watch mode
-pnpm dev:once         # full dev without file watching
-pnpm dev:server       # server only
-pnpm dev:ui           # UI only
-pnpm build            # build all packages
-pnpm typecheck        # type checking
-pnpm test:run         # run tests
-pnpm db:generate      # generate DB migration
-pnpm db:migrate       # apply migrations
+pnpm typecheck
+pnpm test:run
+pnpm build
 ```
 
-See [doc/DEVELOPING.md](./doc/DEVELOPING.md) for the deeper engineering guide.
+## Design Expectation
 
-## Notes
+MSX should not stop at a raw prototype.
 
-- Some upstream package namespaces remain as internal implementation details for now.
-- The product, UI, and docs branding in this fork is MSX.
+- ship the thinnest working MVP fast
+- start the preview immediately
+- keep launch, growth, and revenue lanes active after the first build
+- use strong product and design judgment instead of placeholder UX
+
+## License And Access Boundary
+
+The repository code is one thing.
+The MSX studio subscription and operating network are another.
+
+Owning or running this repo locally does not by itself license:
+
+- the studio signal layer
+- the studio idea layer
+- the studio product catalog
+- studio-managed agentic teams
+- studio distribution and growth systems
+- studio financial rewards or incentive rails
+
+Those are commercial or subscription access concerns, not repository contents.
+
+## More Docs
+
+- [AGENTS.md](/Users/borg/Documents/New%20project/msxstudionew/AGENTS.md)
+- [doc/DEVELOPING.md](/Users/borg/Documents/New%20project/msxstudionew/doc/DEVELOPING.md)
+- [doc/SPEC-implementation.md](/Users/borg/Documents/New%20project/msxstudionew/doc/SPEC-implementation.md)
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](/Users/borg/Documents/New%20project/msxstudionew/LICENSE)

@@ -89,6 +89,11 @@ type StudioOpportunityMetric = {
   value: string;
 };
 
+type StudioOpportunityInsight = {
+  label: string;
+  value: string;
+};
+
 type StudioSwarmUpdate = {
   agent: string;
   action: string;
@@ -111,6 +116,7 @@ type StudioOpportunity = {
   recommendedTemplateId: string;
   proofPoints: string[];
   metrics: StudioOpportunityMetric[];
+  sourceInsights: StudioOpportunityInsight[];
   swarmUpdates: StudioSwarmUpdate[];
 };
 
@@ -150,6 +156,11 @@ const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
       { label: "Industry", value: "Care + health" },
       { label: "First revenue", value: "Caregiver subscription" },
       { label: "Launch path", value: "Mobile preview" }
+    ],
+    sourceInsights: [
+      { label: "Preliminary MVP", value: "Shared memory stream, reminder rituals, caregiver mode" },
+      { label: "Simulated 12-mo revenue", value: "$180k ARR on 1.2k paying caregiver households" },
+      { label: "Market size", value: "$1.4B global caregiver support software wedge" },
     ],
     swarmUpdates: [
       {
@@ -203,6 +214,11 @@ const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
       { label: "First revenue", value: "Paid launch templates" },
       { label: "Launch path", value: "Web dashboard" }
     ],
+    sourceInsights: [
+      { label: "TikTok velocity", value: "3 rising creator workflows with >22% week-over-week content lift" },
+      { label: "Reddit pull", value: "Founders asking for repeatable trend-to-product workflows in 18 active threads" },
+      { label: "Signal score", value: "High urgency, medium defensibility, strong distribution potential" },
+    ],
     swarmUpdates: [
       {
         agent: "signal-hunter",
@@ -254,6 +270,11 @@ const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
       { label: "Industry", value: "Local SMB" },
       { label: "First revenue", value: "Done-for-you pilot" },
       { label: "Launch path", value: "Operator dashboard" }
+    ],
+    sourceInsights: [
+      { label: "Problem", value: "Local SMBs lose inbound demand because leads sit untouched for hours or days" },
+      { label: "Customer", value: "Owner-operators in service businesses with weak follow-up systems" },
+      { label: "Offer shape", value: "Lead capture, instant reply, triage dashboard, and pilot onboarding service" },
     ],
     swarmUpdates: [
       {
@@ -307,6 +328,11 @@ const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
       { label: "First revenue", value: "Merchant SaaS" },
       { label: "Launch path", value: "Embedded storefront widget" }
     ],
+    sourceInsights: [
+      { label: "Preliminary MVP", value: "Guided product quiz, recommendation drawer, merchant analytics panel" },
+      { label: "Simulated 12-mo revenue", value: "$240k ARR from 85 stores on conversion-linked pricing" },
+      { label: "Market size", value: "$900M SMB merchandising and conversion tooling wedge" },
+    ],
     swarmUpdates: [
       {
         agent: "commerce-scout",
@@ -359,6 +385,11 @@ const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
       { label: "First revenue", value: "Internal team pilot" },
       { label: "Launch path", value: "Web command center" }
     ],
+    sourceInsights: [
+      { label: "Reddit pull", value: "Security and compliance operators repeatedly cite repetitive request fatigue" },
+      { label: "Buyer pain signal", value: "Vendor-review backlog and policy Q&A volume keep climbing" },
+      { label: "Signal score", value: "High pain, medium urgency, strong B2B pilot fit" },
+    ],
     swarmUpdates: [
       {
         agent: "ops-researcher",
@@ -410,6 +441,11 @@ const STUDIO_OPPORTUNITIES: StudioOpportunity[] = [
       { label: "Industry", value: "Fintech ops" },
       { label: "First revenue", value: "Operator subscription" },
       { label: "Launch path", value: "Web finance cockpit" }
+    ],
+    sourceInsights: [
+      { label: "Problem", value: "Small teams cannot see runway, invoice timing, and weekly cash decisions in one calm place" },
+      { label: "Customer", value: "Tiny founder-led teams managing cash manually in spreadsheets" },
+      { label: "Offer shape", value: "Weekly cashflow ritual, invoice tracker, and lightweight forecast cockpit" },
     ],
     swarmUpdates: [
       {
@@ -527,6 +563,12 @@ function industryLabel(industry: Exclude<StudioIndustry, "all">) {
 
 function opportunityMetricValue(opportunity: StudioOpportunity, label: string) {
   return opportunity.metrics.find((metric) => metric.label === label)?.value ?? null;
+}
+
+function sourceInsightHeading(source: StudioOpportunitySource) {
+  if (source === "market_signal") return "Channel and signal metrics";
+  if (source === "raw_idea") return "Structured idea frame";
+  return "Preliminary outcome model";
 }
 
 function parseUsdToCents(value: string) {
@@ -1489,27 +1531,22 @@ export function OnboardingWizard() {
               {/* Step content */}
               {step === 1 && (
                 <div className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-muted/50 p-2">
-                        <Sparkles className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">
-                          Choose a studio direction
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          Start from a calmer studio brief. MSX surfaces problems,
-                          research, ideas, simulated product outcomes, and early revenue
-                          models first, then helps operators decide what deserves a
-                          founder, a human team, and an agentic build lane.
-                        </p>
-                      </div>
+                  <div className="mb-1 space-y-2 border-b border-border pb-4">
+                    <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                      Studio
                     </div>
-                    <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      <Activity className="h-3.5 w-3.5" />
-                      Startup studio operating model
-                    </div>
+                    <h3 className="text-[2rem] font-semibold tracking-tight">
+                      Choose a studio direction
+                    </h3>
+                    <p className="max-w-4xl text-sm leading-7 text-muted-foreground">
+                      MSX is an agent-native startup studio that turns AI agents into
+                      formidable founders focused on real problems, fast shipping, and
+                      revenue from day one. It surfaces problems, research, ideas,
+                      simulated product outcomes, and early revenue models first, then
+                      enables human operators to deploy and direct autonomous build
+                      lanes with distribution leverage and financial incentives across
+                      the studio.
+                    </p>
                   </div>
 
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -1708,6 +1745,26 @@ export function OnboardingWizard() {
                               <p className="mt-2 text-sm leading-6">
                                 {selectedOpportunity.signal}
                               </p>
+                            </div>
+                            <div className="rounded-2xl border border-border bg-background/80 p-4">
+                              <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                {sourceInsightHeading(selectedOpportunity.source)}
+                              </div>
+                              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                {selectedOpportunity.sourceInsights.map((insight) => (
+                                  <div
+                                    key={insight.label}
+                                    className="rounded-2xl border border-border bg-card/60 px-3 py-3"
+                                  >
+                                    <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                                      {insight.label}
+                                    </div>
+                                    <div className="mt-2 text-sm leading-5">
+                                      {insight.value}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-3">
                               {selectedOpportunity.proofPoints.map((point) => (

@@ -137,27 +137,6 @@ export function Resources() {
               ideas become companies, and agents turn those companies into shipped products.
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-background/70 px-4 py-3 text-xs text-muted-foreground">
-            Source language from{" "}
-            <a
-              href={SUPERDESIGN_REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-foreground underline underline-offset-4"
-            >
-              superdesign-platform
-            </a>{" "}
-            plus{" "}
-            <a
-              href="https://github.com/longevusmarcus/mothership-glow"
-              target="_blank"
-              rel="noreferrer"
-              className="text-foreground underline underline-offset-4"
-            >
-              mothership-glow
-            </a>
-            .
-          </div>
         </div>
       </section>
 
