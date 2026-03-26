@@ -523,6 +523,10 @@ function industryLabel(industry: Exclude<StudioIndustry, "all">) {
   );
 }
 
+function opportunityMetricValue(opportunity: StudioOpportunity, label: string) {
+  return opportunity.metrics.find((metric) => metric.label === label)?.value ?? null;
+}
+
 function parseUsdToCents(value: string) {
   const normalized = value.replace(/[^0-9.]/g, "").trim();
   if (!normalized) return 0;
@@ -1483,18 +1487,19 @@ export function OnboardingWizard() {
                       </div>
                       <div>
                         <h3 className="font-medium">
-                          Activate from the studio feed
+                          Choose a studio direction
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                          Swipe pre-validated outcomes, raw ideas, and live market
-                          signals from the MSX studio database. Pick the lane,
-                          lock the pod, and activate without writing from scratch.
+                          Start from a calmer studio brief. MSX surfaces problems,
+                          research, ideas, simulated product outcomes, and early revenue
+                          models first, then helps operators decide what deserves a
+                          founder, a human team, and an agentic build lane.
                         </p>
                       </div>
                     </div>
                     <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       <Activity className="h-3.5 w-3.5" />
-                      Startup studio for agents
+                      Startup studio operating model
                     </div>
                   </div>
 
@@ -1562,12 +1567,12 @@ export function OnboardingWizard() {
                             {industryLabel(selectedOpportunity.industry)}
                           </span>
                           <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            {filteredStudioOpportunities.length} surfaced now
+                            {filteredStudioOpportunities.length} under review
                           </span>
                         </div>
                         <div>
                           <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                            MSX database sync
+                            Studio brief
                           </div>
                           <h4 className="mt-2 text-2xl font-semibold tracking-tight">
                             {selectedOpportunity.title}
@@ -1627,10 +1632,20 @@ export function OnboardingWizard() {
                         <div className="rounded-2xl border border-border bg-background/80 p-4">
                           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                             <TrendingUp className="h-3.5 w-3.5" />
-                            First ship
+                            First activation
                           </div>
                           <p className="mt-2 text-sm font-medium">
                             {selectedOpportunity.initialTaskTitle}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border bg-background/80 p-4">
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            Studio thesis
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            MSX should preliminarily identify the problem, pressure-test the
+                            idea, simulate the likely product outcome, and map the first
+                            revenue path before a human founder or team is brought in.
                           </p>
                         </div>
                       </div>
@@ -1649,6 +1664,31 @@ export function OnboardingWizard() {
                             </div>
                           </div>
                         ))}
+                        <div className="rounded-2xl border border-border bg-background/80 px-4 py-4">
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            Projected first revenue
+                          </div>
+                          <div className="mt-2 text-sm font-medium">
+                            {opportunityMetricValue(selectedOpportunity, "First revenue") ?? "To be modeled"}
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                            Treated as a preliminary studio forecast, not a promise. The goal
+                            is to know what to test before capital and people are committed.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border bg-background/80 px-4 py-4">
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            Human activation
+                          </div>
+                          <div className="mt-2 text-sm font-medium">
+                            Founder in residence + operator pod
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                            Once a direction looks credible, MSX can bring in the human lead,
+                            then spin up the agentic team, workspace, dashboard, funding lane,
+                            and acceleration support around them.
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -1670,7 +1710,7 @@ export function OnboardingWizard() {
                         ))}
                       </div>
                       <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                        Swipe cards or tap the queue below
+                        Browse other studio directions
                       </div>
                     </div>
                   </div>
@@ -1705,15 +1745,16 @@ export function OnboardingWizard() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            Simulated swarm
+                            Studio simulation
                           </div>
                           <h4 className="mt-2 text-base font-medium">
-                            Other agents are already moving
+                            What MSX is already modeling
                           </h4>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            MSX keeps the studio feeling active by surfacing
-                            what the agent swarm would already be doing for this
-                            opportunity.
+                            This is a lightweight simulation of the studio engine:
+                            research, product shaping, and revenue modeling happen first;
+                            then humans, founders in residence, and agentic teams are
+                            activated around the strongest opportunities.
                           </p>
                         </div>
                         <Activity className="h-4 w-4 text-muted-foreground" />
@@ -1751,24 +1792,24 @@ export function OnboardingWizard() {
                       <div className="mt-4 grid gap-2 sm:grid-cols-3">
                         <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
                           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Active agents
+                            Research lanes
                           </div>
                           <div className="mt-2 text-sm font-medium">04</div>
                         </div>
                         <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
                           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Preview bias
+                            Simulated outcome
                           </div>
                           <div className="mt-2 text-sm font-medium">
-                            5 min MVP
+                            Preliminary MVP fit
                           </div>
                         </div>
                         <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
                           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Design pass
+                            Revenue model
                           </div>
                           <div className="mt-2 text-sm font-medium">
-                            /superdesign
+                            {opportunityMetricValue(selectedOpportunity, "First revenue") ?? "In review"}
                           </div>
                         </div>
                       </div>
