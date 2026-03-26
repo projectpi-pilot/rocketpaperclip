@@ -19,6 +19,17 @@ const CORE_DIRECTORIES = [
 
 const EXTRA_AGENT_FILES = ["integrations/mcp-memory/backend-architect-with-memory.md"];
 
+const MSX_STUDIO_OPERATING_STANDARD = [
+  "## MSX Studio Operating Standard",
+  "",
+  "- Do not stop at a prototype, runnable build, or MVP label.",
+  "- Ship the thinnest credible slice fast, then keep refining until real end users can pay.",
+  "- Treat premium quality, modern execution, virality readiness, retention readiness, and monetization readiness as required.",
+  "- If the core product works but still feels rough, keep iterating on UX, positioning, pricing, conversion, and growth loops.",
+  "- Escalate only when a true external blocker prevents progress; otherwise continue driving the company forward.",
+  "",
+].join("\n");
+
 function stripQuotes(value) {
   if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
     return value.slice(1, -1);
@@ -94,6 +105,8 @@ function buildCompanyMarkdown(agentCount) {
     "",
     "This package preserves each source agent's markdown instructions as the imported agent body.",
     "",
+    MSX_STUDIO_OPERATING_STANDARD,
+    "",
   ].join("\n");
 }
 
@@ -112,6 +125,7 @@ function buildAgentMarkdown({ name, title, description, sourcePath, body }) {
 
   lines.push("---", "", `# ${name}`, "");
   lines.push(`Imported from \`${sourcePath}\` in the source agency repo.`, "");
+  lines.push(MSX_STUDIO_OPERATING_STANDARD, "");
   lines.push(body.trim(), "");
   return lines.join("\n");
 }

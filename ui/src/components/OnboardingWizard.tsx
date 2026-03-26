@@ -698,10 +698,11 @@ function buildActivationTaskDescription(input: {
     ...selectedTemplateLines,
     "",
     "Execution rules:",
-    "- Ship the thinnest working MVP fast, then keep going through launch, virality, and first revenue.",
+    "- Ship the thinnest credible product fast, then keep refining it until real end users can pay.",
     "- Use the installed /superdesign skill and local Superdesign CLI by default for app and product design work.",
-    "- Run `superdesign init`, spin up a preview immediately, and use `/superdesign help me design the shipped UI` to push for a polished interface instead of a generic placeholder UI.",
-    "- Organize the next project lanes after the core build: launch, virality, and monetization.",
+    "- Run `superdesign init`, spin up a preview immediately, and use `/superdesign help me design the shipped UI` to push for a premium, modern interface instead of a generic placeholder UI.",
+    "- Keep the company premium, modern, viral-ready, and monetization-ready across product, growth, and pricing decisions.",
+    "- Organize the next project lanes after the core build: refinement, launch, virality, monetization, and retention.",
     "",
     "Return a concrete activation plan, create the first delivery tasks, and start delegating.",
   ]
@@ -1906,8 +1907,9 @@ export function OnboardingWizard() {
                               </div>
                               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                                 MSX should preliminarily identify the problem, pressure-test the
-                                idea, simulate the likely product outcome, and map the first
-                                revenue path before a human founder or team is brought in.
+                                idea, simulate the likely product outcome, map the first
+                                revenue path, and keep refining the company until real users are
+                                ready to pay before a human founder or team is brought in.
                               </p>
                               {selectedOpportunity.buildMode === "api_driven" && (
                                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -1956,7 +1958,8 @@ export function OnboardingWizard() {
                               <p className="mt-2 text-xs leading-5 text-muted-foreground">
                                 Once a direction looks credible, MSX can bring in the human lead,
                                 then spin up the agentic team, workspace, dashboard, funding lane,
-                                and acceleration support around them.
+                                and acceleration support around them without lowering the bar on
+                                product quality, growth readiness, or monetization readiness.
                               </p>
                             </div>
                           </div>
@@ -1979,8 +1982,8 @@ export function OnboardingWizard() {
                           What MSX is already modeling
                         </h4>
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          Open this to see the research, product, and revenue simulation
-                          around the selected studio direction.
+                          Open this to see the research, product, growth, and revenue
+                          simulation around the selected studio direction.
                         </p>
                       </div>
                       <ChevronDown
@@ -2034,7 +2037,7 @@ export function OnboardingWizard() {
                               Simulated outcome
                             </div>
                             <div className="mt-2 text-sm font-medium">
-                              Preliminary MVP fit
+                              Premium product fit
                             </div>
                           </div>
                           <div className="rounded-2xl border border-border bg-background/80 px-3 py-3 text-center">
@@ -2073,7 +2076,7 @@ export function OnboardingWizard() {
                     <div>
                       <h3 className="font-medium">Choose the founding lead</h3>
                       <p className="text-xs text-muted-foreground">
-                        Pick the starter team template first, then choose the lead who gets the activation brief and keeps the project moving through launch and first revenue.
+                        Pick the starter team template first, then choose the lead who keeps the company moving until the product is polished, launchable, and ready for paid users.
                       </p>
                     </div>
                   </div>
@@ -2574,7 +2577,7 @@ export function OnboardingWizard() {
                     <div>
                       <h3 className="font-medium">Set goals and outcomes</h3>
                       <p className="text-xs text-muted-foreground">
-                        Lock the project goal first, then refine the activation brief the founding lead receives. This is where outcome clarity and the first shipping instructions come together.
+                        Lock the project goal first, then refine the activation brief the founding lead receives. This is where premium product quality, growth intent, and monetization expectations get set.
                       </p>
                     </div>
                   </div>
@@ -2616,7 +2619,7 @@ export function OnboardingWizard() {
                     <textarea
                       ref={textareaRef}
                       className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[120px] max-h-[300px] overflow-y-auto"
-                      placeholder="Tell the lead how to activate the company, use Superdesign, and organize the build, launch, virality, and revenue lanes."
+                      placeholder="Tell the lead how to activate the company, refine it into a premium product, and organize the growth, virality, monetization, and retention lanes."
                       value={taskDescription}
                       onChange={(e) => {
                         setTaskDescriptionTouched(true);
@@ -2636,7 +2639,7 @@ export function OnboardingWizard() {
                     <div>
                       <h3 className="font-medium">Ready to activate</h3>
                       <p className="text-xs text-muted-foreground">
-                        Activating now will create the studio company, seed the activation lane, wake the lead, and open the first issue.
+                        Activating now will create the studio company, seed the activation lane, wake the lead, and start refinement toward paid adoption.
                       </p>
                     </div>
                   </div>

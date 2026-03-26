@@ -53,17 +53,32 @@ type MentionResolution = {
 const DEFAULT_FALLBACK_AGENT = "agents-orchestrator";
 const MAX_ROOM_MESSAGES = 120;
 const RUN_POLL_INTERVAL_MS = 800;
-const RUN_TIMEOUT_MS = 240_000;
+const RUN_TIMEOUT_MS = 900_000;
 const LIVE_PROGRESS_POLL_INTERVAL_MS = 2000;
 const INLINE_MENTION_LIMIT = 8;
 const TRANSCRIPT_MESSAGE_LIMIT = 6;
 const MAX_ORCHESTRATION_ROUNDS = 8;
 const MAX_AGENT_ATTEMPTS_PER_TURN = 3;
 const OPEN_ISSUE_STATUSES = new Set(["backlog", "todo", "in_progress", "in_review", "blocked"]);
-const FIVE_MINUTE_MVP_OBJECTIVE =
-  "Ship the thinnest working MVP in 5 minutes or less, then improve from the live baseline.";
+const FAST_SHIP_OBJECTIVE =
+  "Ship the thinnest credible product slice fast, then keep refining from the live baseline until real end users can pay.";
 const PRE_REVENUE_OBJECTIVE =
-  "Keep the project moving past the first build until launch motion, virality, and the first revenue signal are in place.";
+  "Keep the project moving past the first build until the company is premium, modern, viral-ready, monetization-ready, and capable of converting real paying users.";
+
+function formatRunTimeoutLabel() {
+  const minutes = Math.round(RUN_TIMEOUT_MS / 60_000);
+  return `${minutes}m`;
+}
+
+function buildRunWaitLimitMessage(agentName?: string | null, runId?: string | null) {
+  const prefix = agentName ? `@${agentName}` : "This run";
+  const runSuffix = runId ? ` (${runId})` : "";
+  return `${prefix}${runSuffix} is still working. MSX stopped waiting in the room after ${formatRunTimeoutLabel()}, but the run may still finish.`;
+}
+
+function isRunWaitLimitError(error: unknown) {
+  return error instanceof Error && error.message.includes("MSX stopped waiting in the room");
+}
 
 function roomStorageKey(companyId: string) {
   return `paperclip.shared-room.${companyId}`;
@@ -318,12 +333,12 @@ function buildProjectContextSummary(project: Project | null, issues: Issue[]) {
   return [
     `Active project: ${project.name}`,
     `Project status: ${project.status}`,
-    `First ship rule: ${FIVE_MINUTE_MVP_OBJECTIVE}`,
+    `First ship rule: ${FAST_SHIP_OBJECTIVE}`,
     `Operating objective: ${PRE_REVENUE_OBJECTIVE}`,
     `Task counts: ${openIssues.length} open, ${doneIssues.length} done, ${issues.length} total.`,
     openLanes
       ? `Open project lanes:\n${openLanes}`
-      : "No open project lanes remain. If the product is already built, create the next launch, virality, or revenue task instead of stopping.",
+      : "No open project lanes remain. If the product is already built, create the next refinement, launch, virality, retention, or revenue task instead of stopping.",
   ].join("\n");
 }
 
@@ -368,14 +383,15 @@ function buildPrompt(
   if (agentId === DEFAULT_FALLBACK_AGENT && !options?.taggedBy) {
     return [
       "You are agents-orchestrator inside a shared operator room in MSX.",
-      "When no agent is explicitly tagged, act as the conductor and keep ownership until the project is shipped, launched, and has reached first revenue or hit a true external blocker.",
-      "First priority: get a deployed or previewable MVP live in 5 minutes or less.",
-      "Ruthlessly cut scope to the thinnest working slice if the request is bigger than that window.",
-      "Do the fastest shippable version first, then route follow-up improvements after something real is live.",
+      "When no agent is explicitly tagged, act as the conductor and keep ownership until the project is premium, modern, launched, monetization-ready, and capable of taking real payments or has hit a true external blocker.",
+      "First priority: get a deployed or previewable credible product slice live fast.",
+      "Ruthlessly cut scope to the thinnest believable slice if the request is bigger than the first ship window.",
+      "Do the fastest credible version first, then keep routing follow-up improvements after something real is live.",
       "All digital products must clear a design bar, not just a functional bar.",
       "If a build works but the interface still feels rough, route the right UI/UX specialist and use the installed /superdesign workflow before calling it shipped.",
       "Do not treat 'built', 'implemented', or 'runnable' as the finish line.",
-      "After the product works, continue project operations: launch prep, analytics, positioning, virality, distribution, pricing, conversion, follow-up, and monetization.",
+      "After the product works, continue project operations: refinement, launch prep, analytics, positioning, virality, distribution, pricing, conversion, retention, follow-up, and monetization.",
+      "Every company should read as premium, modern, viral-ready, and monetization-ready before the room treats it as complete.",
       "For real product implementation, prefer hands-on engineering agents for code delivery before design-only agents.",
       "For mobile or Expo app code work, favor exact registered handles like @rapid-prototyper, @frontend-developer, @senior-developer, and @software-architect before @mobile-app-builder unless the task is explicitly mobile UX or UI design.",
       "If a specialist should speak next, mention them with an exact registered @agent-id in your reply.",
@@ -401,9 +417,10 @@ function buildPrompt(
       `You are ${agentId}, replying inside a shared operator room in MSX.`,
       `You were tagged by @${options.taggedBy} to handle this request.`,
       "Reply directly to the operator with the concrete deliverable they need.",
-      "Assume the room expects a 5-minute MVP ship window for the first slice.",
-      "If the requested scope is too large, cut it to the smallest working and previewable version you can complete first.",
+      "Assume the room expects a fast first ship window for the first credible slice, not a final MVP handoff.",
+      "If the requested scope is too large, cut it to the smallest working and previewable version you can complete first, then identify the next refinement needed to reach paid-user readiness.",
       "If you touch a digital product UI, leave it with a coherent visual system and a clean preview that can be refined further with /superdesign and the local Superdesign CLI.",
+      "Do not stop at functional completion. Push toward premium product quality, virality readiness, and monetization readiness.",
       "Stay within your specialty and do not restart onboarding or identity setup.",
       "If you are blocked by another specialty inside the room, mention the exact registered @agent-id that should take the next step.",
       "If you finished your slice, return a clean implementation handoff or completion note.",
@@ -419,15 +436,16 @@ function buildPrompt(
       `Handoff note from @${options.taggedBy}:`,
       options.handoffMessage || message,
       "",
-      "If your slice is done but the project is still pre-revenue, mention the next exact registered @agent-id needed for launch, virality, analytics, growth, sales, or monetization.",
+      "If your slice is done but the project is still not ready for paid users, mention the next exact registered @agent-id needed for design polish, launch, virality, analytics, growth, sales, retention, or monetization.",
     ].join("\n");
   }
 
   return [
     `You are ${agentId}, replying inside a shared operator room in MSX.`,
     "You were explicitly tagged by the operator.",
-    "Default to the thinnest shippable MVP slice first, ideally something that can be previewed or deployed in 5 minutes or less.",
+    "Default to the thinnest credible shippable slice first, then keep refining until the company is ready for real paying users.",
     "If the work is a digital product, make the shipped slice visually intentional, not just functional, and leave a preview ready for /superdesign by default.",
+    "Treat premium quality, modern execution, virality readiness, and monetization readiness as required, not optional.",
     "Reply only as yourself and stay within your specialty.",
     "Do not start with identity/bootstrap setup.",
     "",
@@ -653,7 +671,7 @@ async function waitForRun(runId: string) {
     await new Promise((resolve) => window.setTimeout(resolve, RUN_POLL_INTERVAL_MS));
   }
 
-  throw new Error(`Run ${runId} timed out after ${Math.round(RUN_TIMEOUT_MS / 1000)}s.`);
+  throw new Error(buildRunWaitLimitMessage(null, runId));
 }
 
 function MentionTray({
@@ -1037,8 +1055,8 @@ export function SharedChat() {
         changed = true;
         return {
           ...message,
-          text: `${message.agentId}: Timed out after ${Math.round(RUN_TIMEOUT_MS / 1000)}s.`,
-          state: "error" as const,
+          text: buildRunWaitLimitMessage(message.agentId, message.runId ?? null),
+          state: "pending" as const,
         };
       }
 
@@ -1229,9 +1247,9 @@ export function SharedChat() {
       description: [
         message,
         "",
-        `First ship rule: ${FIVE_MINUTE_MVP_OBJECTIVE}`,
+        `First ship rule: ${FAST_SHIP_OBJECTIVE}`,
         `Operating objective: ${PRE_REVENUE_OBJECTIVE}`,
-        "Success tracks: core product, launch, virality, and revenue.",
+        "Success tracks: product quality, launch, virality, retention, and revenue.",
       ].join("\n"),
       status: "in_progress",
       ...(primaryBuildAgent ? { leadAgentId: primaryBuildAgent.id } : {}),
@@ -1239,7 +1257,7 @@ export function SharedChat() {
 
     const rootGoal = await goalsApi.create(selectedCompanyId, {
       title: `${createdProject.name} success system`,
-      description: "Keep this project moving across build, launch, virality, and revenue until it is a real operating product.",
+      description: "Keep this project moving across product refinement, launch, virality, retention, and revenue until it is a premium operating company with real paying users.",
       level: "team",
       status: "active",
     });
@@ -1248,7 +1266,7 @@ export function SharedChat() {
       {
         title: `Ship the core product for ${createdProject.name}`,
         description:
-          "Success = a live preview or deployed MVP exists, the core user flow works, and the experience is credible enough to show externally.",
+          "Success = a live preview or deployed product exists, the core user flow works, the experience feels premium and modern, and it is credible enough for real users to pay.",
         ownerAgentId: primaryBuildAgent?.id ?? null,
         status: "active",
       },
@@ -1269,7 +1287,7 @@ export function SharedChat() {
       {
         title: `Revenue path for ${createdProject.name}`,
         description:
-          "Success = pricing, monetization surfaces, and a direct path to first revenue are clear and executable.",
+          "Success = pricing, monetization surfaces, retention hooks, and a direct path to paid-user conversion are clear and executable.",
         ownerAgentId: revenueAgent?.id ?? null,
         status: "planned",
       },
@@ -1293,13 +1311,13 @@ export function SharedChat() {
 
     const seedIssueSpecs = [
       {
-        title: `Ship 5-minute MVP for ${createdProject.name}`,
+        title: `Ship the first credible product slice for ${createdProject.name}`,
         description: [
           message,
           "",
-          `First ship rule: ${FIVE_MINUTE_MVP_OBJECTIVE}`,
-          "Goal: get the first working version live, previewable, usable, and ready for launch handoff.",
-          "If the requested product is too large, cut to the smallest believable MVP and ship that first.",
+          `First ship rule: ${FAST_SHIP_OBJECTIVE}`,
+          "Goal: get the first credible version live, previewable, usable, and ready for continuous refinement.",
+          "If the requested product is too large, cut to the smallest believable slice and ship that first.",
           "Design rule: even the first slice should have strong typography, spacing, contrast, and a preview ready for /superdesign and superdesign init by default.",
         ].join("\n"),
         status: primaryBuildAgent ? "in_progress" : "todo",
@@ -1327,11 +1345,11 @@ export function SharedChat() {
         ...(viralityAgent ? { assigneeAgentId: viralityAgent.id } : {}),
       },
       {
-        title: `Reach first revenue for ${createdProject.name}`,
+        title: `Reach paid-user readiness for ${createdProject.name}`,
         description: [
           "Push the project from launched to earning.",
-          "Cover pricing, monetization surfaces, follow-up, sales motion, and closing the first revenue event.",
-          "Do not mark the project done before first money unless there is a true external blocker.",
+          "Cover pricing, monetization surfaces, retention, follow-up, sales motion, and closing the first paid-user event.",
+          "Do not mark the project done before real users can pay unless there is a true external blocker.",
         ].join("\n"),
         status: "backlog",
         priority: "high",
@@ -1599,7 +1617,7 @@ export function SharedChat() {
         text: [
             `Created @sidebar project "${autoProjectContext.project.name}" automatically for this build thread.`,
           autoProjectContext.issueId
-            ? "Seeded build, launch, virality, and revenue tasks so the project keeps moving after the first MVP is live."
+            ? "Seeded build, refinement, launch, virality, retention, and revenue tasks so the project keeps moving after the first product slice is live."
             : "Project shell created, but the lifecycle tasks could not be created automatically.",
         ].join(" "),
         timestamp: new Date().toISOString(),
@@ -1700,19 +1718,42 @@ export function SharedChat() {
           state: "pending",
         });
 
-        let result = await runAgentTurn({
-          agent,
-          latestMessage,
-          transcript: formatTranscript(workingMessages, TRANSCRIPT_MESSAGE_LIMIT),
-          mentions: mentionsForTurn,
-          taggedBy,
-          operatorMessage,
-          handoffMessage,
-          routingGuide,
-          projectContext: activeProjectContext,
-          issueId: initialScope.issueId,
-          projectId: initialScope.projectId,
-        });
+        let result;
+        try {
+          result = await runAgentTurn({
+            agent,
+            latestMessage,
+            transcript: formatTranscript(workingMessages, TRANSCRIPT_MESSAGE_LIMIT),
+            mentions: mentionsForTurn,
+            taggedBy,
+            operatorMessage,
+            handoffMessage,
+            routingGuide,
+            projectContext: activeProjectContext,
+            issueId: initialScope.issueId,
+            projectId: initialScope.projectId,
+          });
+        } catch (error) {
+          if (isRunWaitLimitError(error)) {
+            const waitingMessage = {
+              id: pendingMessageId,
+              role: "agent" as const,
+              agentId: agent.name,
+              text: buildRunWaitLimitMessage(agent.name, null),
+              timestamp: new Date().toISOString(),
+              state: "pending" as const,
+            };
+            replaceRoomMessage(pendingMessageId, waitingMessage);
+            setStatus(`@${agent.name} is still running. MSX stopped waiting after ${formatRunTimeoutLabel()}.`);
+            return {
+              roomMessage: waitingMessage,
+              reply: "",
+              delegatedAgents: [] as Agent[],
+              resolvedAliases: [] as Array<{ input: string; resolved: string }>,
+            };
+          }
+          throw error;
+        }
 
         if (
           initialScope.issueId &&
@@ -1973,10 +2014,14 @@ export function SharedChat() {
           role: "system",
           text: message,
           timestamp: new Date().toISOString(),
-          state: "error",
+          state: isRunWaitLimitError(runError) ? "done" : "error",
         },
       ]);
-      setStatus(message);
+      setStatus(
+        isRunWaitLimitError(runError)
+          ? `The room stopped waiting after ${formatRunTimeoutLabel()}, but the run may still finish.`
+          : message,
+      );
     } finally {
       setIsSending(false);
     }
@@ -2065,7 +2110,7 @@ export function SharedChat() {
                       </p>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Objective: stay in motion through launch and first revenue, not just a finished build.
+                      Objective: stay in motion through paid-user readiness, not just a finished build.
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary">{activeProjectIssues.length} tasks</Badge>
